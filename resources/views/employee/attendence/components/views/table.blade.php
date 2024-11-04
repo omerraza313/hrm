@@ -24,10 +24,10 @@
                         <th>#</th>
                         <th>Date </th>
                         <th>Attendence visual</th>
+                        <th>Arrival</th>
                         <th>Earned Hrs</th>
                         <th>Effective Hrs</th>
                         <th>Gross Hrs</th>
-                        <th>Arrival</th>
                         <th>Log</th>
                     </tr>
                 </thead>
@@ -42,9 +42,6 @@
                                         style="width: 40%" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                             </td>
-                            <td>{{$data['earned_time']}}</td>
-                            <td>{{$data['effective_time']}}</td>
-                            <td>08:00:00</td>
                             <td>
                                 @if($data['checkin_time'])
                                     {{ \Carbon\Carbon::parse($data['checkin_time'])->format('h:i A') }}
@@ -52,6 +49,9 @@
                                     --:--:--
                                 @endif
                             </td>
+                            <td>{{$data['earned_time']}}</td>
+                            <td>{{$data['effective_time']}}</td>
+                            <td>08:00:00</td>
                             <td>
                             <button class="btn btn-primary" onclick="fetchDeviceLogs('{{ $data['date'] }}', {{ $data['user_id'] }})">View</button>
                             </td>

@@ -75,8 +75,8 @@ class AttendenceController extends Controller {
                 $firstLogTime = Carbon::parse($logsForDate->first()->time);
                 $lastLogTime = Carbon::parse($logsForDate->last()->time);
 
-                $earnedHours = $firstLogTime->diff($lastLogTime);
-                $earnedHoursFormatted = sprintf('%02d:%02d:%02d', $earnedHours->h, $earnedHours->i, $earnedHours->s);
+                $effectiveHours = $firstLogTime->diff($lastLogTime);
+                $earnedHoursFormatted = sprintf('%02d:%02d:%02d', $effectiveHours->h, $effectiveHours->i, $effectiveHours->s);
                 $checkinTime = null;
                 $totalMinutes = null;
 
@@ -111,13 +111,13 @@ class AttendenceController extends Controller {
                     }
                 }
 
-                $effectiveHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
+                $earnedHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
 
                 return [
                     'date' => $logDate->date,
                     'checkin_time' => $checkinTime,
-                    'earned_time' => $earnedHoursFormatted,
-                    'effective_time' => $effectiveHours,
+                    'effective_time' => $earnedHoursFormatted,
+                    'earned_time' => $earnedHours,
                     'device_logs' => $logsForDate,
                     'user_id' => Auth::id()
                 ];
