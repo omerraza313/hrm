@@ -30,6 +30,7 @@ class AttendenceController extends Controller {
 
     public function index(Request $request)
     {
+        //dd($request);
         $data = $this->attendenceService->getAttendenceData($request->all());
         return view('admin.attendence.regular.view', $data);
     }

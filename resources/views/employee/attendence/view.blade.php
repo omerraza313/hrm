@@ -17,7 +17,7 @@
         </div>
     </div>
     <!-- /Page Header -->
-
+     {{--
     <div class="row">
         @include('employee.attendence.components.views.stats')
 
@@ -25,6 +25,7 @@
 
         @include('employee.attendence.components.views.action')
     </div>
-
+    --}}
     @include('employee.attendence.components.views.table')
+    
 @endsection

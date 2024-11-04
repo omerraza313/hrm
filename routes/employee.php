@@ -9,7 +9,7 @@ use App\Http\Controllers\Employee\LeaveApplicationController;
 
 Route::middleware(['web', 'role:employee'])->prefix('employee')->name('employee.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
+    
     // Leave Application Routes
     Route::get('/leave-application', [LeaveApplicationController::class, 'index'])->name('leave.application.view');
     Route::get('/get_leave_plans', [LeaveApplicationController::class, 'get_leave_plans'])->name('leave.plans.values');
@@ -23,7 +23,7 @@ Route::middleware(['web', 'role:employee'])->prefix('employee')->name('employee.
     Route::get('/attendence', [AttendenceController::class, 'index'])->name('attendence.view');
     Route::post('/attendence/mark/arrival', [AttendenceController::class, 'mark_arrival_attendance'])->name('attendence.mark.arrival');
     Route::post('/attendence/mark/leave/{id?}', [AttendenceController::class, 'mark_leave_attendance'])->name('attendence.mark.leave');
-
+    Route::get('fetch_device_log', [AttendenceController::class, 'fetch_device_log'])->name('fetch.device_log');
 
     // Manager
     Route::get('/attendence/manager_view', [AttendenceController::class, 'attendence_view'])->name('employee.manager.attendence.regular.view');

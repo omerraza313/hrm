@@ -32,139 +32,32 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($newAttendence as $key => $attendence)
-                        @php
-                            $attendence = (object) $attendence;
-                            $effectiveTime = DateHelper::calculateEffectiveTime($attendence->logs);
-                        @endphp
+                    @foreach($newAttendanceData as $key=>$data)
                         <tr>
-                            <td>{{ $loop->iteration }}</td>
-                            <td>{{ Date('m/d/Y', strtotime($attendence->a_date)) }}</td>
+                            <td>{{++$key}}</td>
+                            <td>{{$data['date']}}</td>
                             <td>
                                 <div class="progress progress-xs">
                                     <div class="progress-bar progress-bar-striped bg-primary" role="progressbar"
-                                        style="width: {{ $attendence->attendence_visual }}%"
-                                        aria-valuenow="{{ $attendence->attendence_visual }}" aria-valuemin="0"
-                                        aria-valuemax="100"></div>
+                                        style="width: 40%" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                             </td>
+                            <td>{{$data['earned_time']}}</td>
+                            <td>{{$data['effective_time']}}</td>
+                            <td>08:00:00</td>
                             <td>
-                                <h6>
-                                    {{ $attendence->effective_hrs_in_hours }} Hrs
-                                    {{ $attendence->effective_hrs_in_minus }} mins
-                                </h6>
-                            </td>
-                            <td>
-                                <h6>
-                                    {{ $effectiveTime }}
-                                </h6>
-                            </td>
-                            <td>
-                                <h6>{{ $attendence->Gross_Hrs }}
-                                </h6>
-                            </td>
-                            <td>
-                                @if ($attendence->status == \App\Enums\AttendenceEnum::OnTime->value)
-                                    <span class="bg-success text-white"
-                                        style="padding: 8px 8px; border-radius: 100%;"><i
-                                            class="fa fa-check"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
-                                @elseif ($attendence->status == \App\Enums\AttendenceEnum::Late->value)
-                                    <span class="bg-primary text-white"
-                                        style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Leave->value)
-                                    <span class="bg-info text-white" style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Holiday->value)
-                                    <span class="bg-warning text-white"
-                                        style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Absent->value)
-                                    <span class="bg-danger text-white"
-                                        style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
+                                @if($data['checkin_time'])
+                                    {{ \Carbon\Carbon::parse($data['checkin_time'])->format('h:i A') }}
+                                @else
+                                    --:--:--
                                 @endif
                             </td>
-                            <td><button class="btn btn-primary"
-                                    onclick="openLogModal('{{ json_encode($attendence) }}')">View</button>
+                            <td>
+                            <button class="btn btn-primary" onclick="fetchDeviceLogs('{{ $data['date'] }}', {{ $data['user_id'] }})">View</button>
                             </td>
-                            {{-- <td>
-                                @if ($attendence->status == \App\Enums\AttendenceEnum::OnTime->value)
-                                    <span class="bg-success text-white"
-                                        style="padding: 8px 8px; border-radius: 100%;"><i
-                                            class="fa fa-check"></i></span>
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Late->value)
-                                    <span class="bg-primary text-white"
-                                        style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Leave->value)
-                                    <span class="bg-info text-white" style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Holiday->value)
-                                    <span class="bg-warning text-white"
-                                        style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Absent->value)
-                                    <span class="bg-danger text-white"
-                                        style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                @endif
-                            </td> --}}
                         </tr>
                     @endforeach
-                    {{-- <tr>
-                        <td>1</td>
-                        <td>19 Feb 2019</td>
-                        <td>
-                            <div class="progress progress-xs">
-                                <div class="progress-bar progress-bar-striped bg-primary" role="progressbar"
-                                    style="width: 40%" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                        </td>
-                        <td>
-                            <h6>5 Hrs, 31 min</h6>
-                        </td>
-                        <td>
-                            <h6>9 Hrs</h6>
-                        </td>
-                        <td>
-                            <span class="bg-warning text-white" style="padding: 8px 13px; border-radius: 100%;"><i
-                                    class="fa fa-exclamation"></i></span> 3 hrs late
-                        </td>
-                        <td>
-                            <span class="bg-warning text-white" style="padding: 8px 13px; border-radius: 100%;"><i
-                                    class="fa fa-exclamation"></i></span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>2</td>
-                        <td>19 Feb 2019</td>
-                        <td>
-                            <div class="progress progress-xs">
-                                <div class="progress-bar progress-bar-striped bg-primary" role="progressbar"
-                                    style="width: 70%" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                        </td>
-                        <td>
-                            <h6>5 Hrs, 31 min</h6>
-                        </td>
-                        <td>
-                            <h6>9 Hrs</h6>
-                        </td>
-                        <td>
-                            <span class="bg-success text-white" style="padding: 8px 8px; border-radius: 100%;"><i
-                                    class="fa fa-check"></i></span> On Time
-                        </td>
-                        <td>
-                            <span class="bg-success text-white" style="padding: 8px 8px; border-radius: 100%;"><i
-                                    class="fa fa-check"></i></span>
-                        </td>
-                    </tr> --}}
+                    
                 </tbody>
             </table>
         </div>
@@ -177,6 +70,57 @@
         function getAttendenceLog() {
             let value = document.getElementById('attendence_log_month').value;
             window.location.href = "{{ route('employee.attendence.view') }}" + "?filterMonth=" + value;
+        }
+        function fetchDeviceLogs(arrivalDate, userId) {
+            $.ajax({
+                url: '{{ route('employee.fetch.device_log') }}', // Correctly namespaced route
+                method: 'GET',
+                data: {
+                    arrival_date: arrivalDate,
+                    user_id: userId
+                },
+                success: function(response) {
+                    $('#view_log_modal').modal('show'); // Show the modal
+                    
+                    let mainString = `
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Earned Time</th>
+                                    <th>Floor</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    // Loop through the response data to create table rows
+                    response.forEach(log => {
+                        mainString += `
+                            <tr>
+                                <td>${log.checkin}</td>
+                                <td>${log.checkout}</td>
+                                <td>${log.time_spent}</td>
+                                <td>${log.device_id}</td>
+                                <td><!-- Optional: Add remarks here --></td>
+                            </tr>
+                        `;
+                    });
+
+                    mainString += `
+                            </tbody>
+                        </table>
+                    `;
+
+                    // Set the generated HTML into the modal content
+                    $('#view_modal_data').html(mainString);
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
         }
 
         function openLogModal(attendence) {

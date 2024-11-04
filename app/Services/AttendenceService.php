@@ -250,7 +250,7 @@ class AttendenceService {
 
     public function getAttendenceData($data): array
     {
-        //dd('Omer');
+        //dd($data);
         $employee_id = $data['employee_id'] ?? null;
         $to_date = $data['to_date'] ?? null;
         $from_date = $data['from_date'] ?? null;

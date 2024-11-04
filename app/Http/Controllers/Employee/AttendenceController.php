@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-
+use Auth;
+use App\Models\DeviceLog;
 
 class AttendenceController extends Controller {
     public function __construct(protected AttendenceService $attendenceService)
@@ -27,10 +28,172 @@ class AttendenceController extends Controller {
     }
     public function index(Request $request)
     {
-        //dd('Omer');
+        //dd($request);
+        //return $request;
+        // $filter_data = array(
+        //     'employee_id' => Auth::id(),
+
+        // );
+        //$currentMonth = 10;
+        // $newAttendence_data = Attendence::where('user_id', Auth::id())
+        // ->whereMonth('arrival_date', $monthAttendence)
+        // ->orderBy('id', 'desc')
+        // ->get();
+
+        $currentMonth = Carbon::now()->month;
+
+        if ($request->has('filterMonth')) {
+            $currentMonth = $request->input('filterMonth');
+        }
+        $currentYear = Carbon::now()->year;
+
+        $currentMonth = Carbon::now()->month;
+
+        if ($request->has('filterMonth')) {
+            $currentMonth = $request->input('filterMonth');
+        }
+        $currentYear = Carbon::now()->year;
+
+        // Step 1: Fetch unique dates from device_log for the specified user and month
+        $uniqueDates = DeviceLog::where('user_id', Auth::id())
+            ->whereMonth('date', $currentMonth)
+            ->whereYear('date', $currentYear)
+            ->selectRaw('date')
+            ->groupBy('date')
+            ->orderBy('date', 'desc')
+            ->get();
+            
+        // Step 2: Fetch all logs for each unique date
+        $newAttendanceData = $uniqueDates->map(function ($logDate) {
+            $logsForDate = DeviceLog::where('user_id', Auth::id())
+                ->whereDate('date', $logDate->date)
+                ->orderBy('time')
+                ->get();
+
+            if ($logsForDate->isNotEmpty()) {
+                // Calculate earned time based on first and last log of the day
+                $firstLogTime = Carbon::parse($logsForDate->first()->time);
+                $lastLogTime = Carbon::parse($logsForDate->last()->time);
+
+                $earnedHours = $firstLogTime->diff($lastLogTime);
+                $earnedHoursFormatted = sprintf('%02d:%02d:%02d', $earnedHours->h, $earnedHours->i, $earnedHours->s);
+                $checkinTime = null;
+                $totalMinutes = null;
+
+                // Find the first "CheckIn" entry for check-in time
+                foreach ($logsForDate as $log) {
+                    if ($log->type === 'CheckIn') {
+                        $checkinTime = Carbon::parse($log->time)->format('h:i A'); // 12-hour format without seconds
+                        break;
+                    }
+                }
+                
+                // Calculate effective time spent across all CheckIn and CheckOut pairs
+                for ($i = 0; $i < $logsForDate->count(); $i++) {
+                    $currentLog = $logsForDate[$i];
+
+                    if ($currentLog->type === 'CheckIn') {
+                        $checkInTime = Carbon::parse($currentLog->time);
+
+                        // Look for the next CheckOut log after this CheckIn
+                        for ($j = $i + 1; $j < $logsForDate->count(); $j++) {
+                            if ($logsForDate[$j]->type === 'CheckOut') {
+                                $checkOutTime = Carbon::parse($logsForDate[$j]->time);
+                                $minutesSpent = $checkInTime->diffInMinutes($checkOutTime);
+
+                                $totalMinutes += $minutesSpent;
+
+                                // Move index to the position of this CheckOut to continue
+                                $i = $j;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                $effectiveHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
+
+                return [
+                    'date' => $logDate->date,
+                    'checkin_time' => $checkinTime,
+                    'earned_time' => $earnedHoursFormatted,
+                    'effective_time' => $effectiveHours,
+                    'device_logs' => $logsForDate,
+                    'user_id' => Auth::id()
+                ];
+            } else {
+                return [
+                    'date' => $logDate->date,
+                    'checkin_time' => null,
+                    'earned_time' => '00:00:00',
+                    'effective_time' => '00:00:00',
+                    'device_logs' => [],
+                    'user_id' => Auth::id()
+                ];
+            }
+        });
+        
+        //return $newAttendanceData;
+        return view('employee.attendence.view', compact('newAttendanceData'));
         $data = $this->attendenceService->getAttendenceData($request->all());
+        //dd($data);
         return view('employee.attendence.view', $data);
     }
+    public function fetch_device_log(Request $request)
+    {
+        $arrivalDate = $request->input('arrival_date');
+        $userId = $request->input('user_id');
+
+        // Fetch the device logs based on the arrival date and user ID
+        $deviceLogs = DeviceLog::where('user_id', $userId)
+            ->where('date', $arrivalDate)
+            ->orderBy('time')
+            ->get();
+
+        $result = [];
+        $count = $deviceLogs->count();
+
+        for ($i = 0; $i < $count; $i++) {
+            $currentLog = $deviceLogs[$i];
+
+            // Check if the current log is a CheckIn
+            if ($currentLog->type == 'CheckIn') {
+                $checkinTime = date('g:i A', strtotime($currentLog->time));
+                $nextCheckoutTime = null;
+                
+                // Look for the next Checkout log
+                for ($j = $i + 1; $j < $count; $j++) {
+                    if ($deviceLogs[$j]->type == 'CheckOut') {
+                        $nextCheckoutTime = $deviceLogs[$j]->time;
+                        break;
+                    }
+                }
+                
+                // If we found a Checkout log, calculate time spent
+                if ($nextCheckoutTime) {
+                    $checkoutTime = date('g:i A', strtotime($nextCheckoutTime));
+                    $timeSpent = (strtotime($nextCheckoutTime) - strtotime($currentLog->time)) / 60; // in minutes
+
+                    $result[] = [
+                        'device_id' => $currentLog->device_id,
+                        'arrivalDate' => $arrivalDate,
+                        'checkin' => $checkinTime,
+                        'checkout' => $checkoutTime,
+                        'time_spent' => "{$timeSpent} Min"
+                    ];
+                }
+            }
+
+            // Check if the current log is a CheckOut
+            if ($currentLog->type == 'CheckOut') {
+                // In case of consecutive CheckOuts, we just skip to the next iteration
+                continue;
+            }
+        }
+
+        return response()->json($result);
+    }
+
     // late commers service
 
     public function attendence_view(Request $request){

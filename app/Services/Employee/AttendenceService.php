@@ -12,11 +12,18 @@ use App\Enums\RolesEnum;
 use App\Helpers\AttendanceLogging;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Models\DeviceLog;
 
 class AttendenceService {
     public function getAttendenceData($data): array
     {
-        // dd($data);
+         //dd($data);
+        $employee_id = Auth::id() ?? null;
+        $allAttendance = DeviceLog::when($employee_id, function ($query, $emp_id) {
+            return $query->where('user_id', $emp_id);
+        });
+        //dd($allAttendance);
+
         $monthAttendence = Carbon::now()->format('m');
         if (isset($data['filterMonth'])) {
             $monthAttendence = $data['filterMonth'];
@@ -224,7 +231,7 @@ class AttendenceService {
 
                     'logs' => [$attendence->toArray()]
                 ];
-//                dd($newAttendence[$attendence->user_id][$newDate], $original_attendence);
+                //dd($newAttendence[$attendence->user_id][$newDate], $original_attendence);
 
             } else {
 
@@ -251,7 +258,7 @@ class AttendenceService {
                 }
 
                 $new_row = $newAttendence[$attendence->user_id][$newDate];
-//                dd($newAttendence[$attendence->user_id][$newDate], $original_attendence);
+                //dd($newAttendence[$attendence->user_id][$newDate], $original_attendence);
 
             }
 
@@ -313,7 +320,7 @@ class AttendenceService {
         // dd($allAtendence->toArray());
         $newAttendence = [];
         foreach ($allAtendence as $attendence) {
-//             dd($attendence);
+             //dd($attendence);
             $newDate = (string) Carbon::parse($attendence->arrival_time)->format('Y-m-d');
             $today = Carbon::create($currentYear, $month, 1, 0, 0, 0)->format('Y-m');
             $cmDate = Carbon::parse($attendence->arrival_time)->format('Y-m');
@@ -351,7 +358,7 @@ class AttendenceService {
             }
         }
 
-//         dd($newAttendence);
+        //dd($newAttendence);
         return $newAttendence;
     }
     private function get_present_attendence_log($month)
