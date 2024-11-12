@@ -5,6 +5,7 @@ use App\Http\Controllers\SuperAdmin\PayrollController;
 use App\Services\RouteService;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SuperAdmin\AttendenceController;
 use App\Http\Controllers\SuperAdmin\LeaveController as SuperAdminLeaveController;
 use App\Http\Controllers\SuperAdmin\ProfileController as SuperAdminProfileController;
@@ -122,6 +123,9 @@ Route::group(['middleware' => 'auth'], function () {
         // Payrolls
         Route::get('/payroll/employee', [PayrollController::class, 'index'])->name('admin.payroll.employee');
         Route::get('/payroll/employee/view', [PayrollController::class, 'salary_view'])->name('admin.payroll.employee.view');
+        
+        // Roles
+        Route::resource('roles', RoleController::class);
     });
 
     include __DIR__ . '/employee.php';
