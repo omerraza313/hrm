@@ -37,7 +37,7 @@ class AttendenceController extends Controller {
 
     public function update(AttendenceUpdateRequest $request)
     {
-        $this->authorize('attendances.edit');
+        $this->authorize('attendance.edit');
         $data = $request->validated();
         $updateStatus = $this->attendenceService->updateAttendence($data);
         if ($updateStatus) {
