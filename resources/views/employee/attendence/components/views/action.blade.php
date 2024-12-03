@@ -34,6 +34,7 @@
                 </div>
                 <div class="col-lg-12 text-center">
                     <div class="row">
+                        @can('attendance.check-in')
                         @if (!$todayAttendence?->arrival_time)
                             <div class="col-lg-12 text-center">
                                 <form action="{{ route('employee.attendence.mark.arrival') }}" method="POST">
@@ -43,7 +44,8 @@
                                 </form>
                             </div>
                         @endif
-
+                        @endcan
+                        @can('attendance.check-out')
                         @if ($todayAttendence && ($todayAttendence?->arrival_time || !$todayAttendence?->leave_time))
                             <div class="col-lg-12 text-center">
                                 <form
@@ -55,6 +57,7 @@
                                 </form>
                             </div>
                         @endif
+                        @endcan
                     </div>
                 </div>
             </div>

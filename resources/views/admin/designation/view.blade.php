@@ -46,14 +46,18 @@
                                             <a href="#" class="action-icon dropdown-toggle" data-bs-toggle="dropdown"
                                                 aria-expanded="false"><i class="material-icons">more_vert</i></a>
                                             <div class="dropdown-menu dropdown-menu-right">
+                                                @can('designation.edit')
                                                 <a class="dropdown-item" href="#"
                                                     onclick="openEditModal('{{ route('admin.designation.update', $designation->id) }}', '{{ $designation->name ?? '' }}', '{{ $designation->department->id ?? '' }}');"><i
                                                         class="fa fa-pencil m-r-5"></i>
                                                     Edit</a>
+                                                @endcan
+                                                @can('designation.delete')
                                                 <a class="dropdown-item" href="#"
                                                     onclick="openDeleteModal('{{ route('admin.designation.delete', $designation->id) }}')"><i
                                                         class="fa fa-trash-o m-r-5"></i>
                                                     Delete</a>
+                                                @endcan
                                             </div>
                                         </div>
                                     </td>

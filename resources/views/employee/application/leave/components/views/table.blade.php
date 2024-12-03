@@ -72,10 +72,12 @@
                                                     class="fa fa-pencil m-r-5"></i>
                                                 View</a>
                                             @if (!$applyLeave->approved_by)
+                                            @can('leave.delete')
                                                 <a class="dropdown-item" href="#"
                                                     onclick="deleteLeaveFunction('{{ route('employee.leave.delete', $applyLeave->id) }}');"><i
                                                         class="fa fa-trash-o m-r-5"></i>
                                                     Delete</a>
+                                            @endcan
                                             @endif
                                         </div>
                                     </div>

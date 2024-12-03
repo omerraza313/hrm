@@ -29,16 +29,22 @@
                             <a href="#" class="action-icon dropdown-toggle" data-bs-toggle="dropdown"
                                 aria-expanded="false"><i class="material-icons">more_vert</i></a>
                             <div class="dropdown-menu dropdown-menu-right">
+                                @can('policy.show')
                                 <a class="dropdown-item" href="#"
                                     onclick="openViewModal({{ json_encode($policy) }})"><i class="fa fa-eye m-r-5"></i>
                                     View</a>
+                                @endcan
+                                @can('policy.assign')
                                 <a class="dropdown-item" href="#"
                                     onclick="openAssignModal({{ json_encode($policy) }})"><i
                                         class="fa fa-pencil m-r-5"></i>
                                     Assign</a>
+                                @endcan
+                                @can('policy.delete')
                                 <a class="dropdown-item" href="#"
                                     onclick="openDeleteModal('{{ route('admin.policy.delete', $policy->id) }}');"><i
                                         class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                @endcan
                             </div>
                         </div>
                     </td>

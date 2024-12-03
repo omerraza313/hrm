@@ -15,8 +15,10 @@
                 </ul>
             </div>
             <div class="col-auto float-end ms-auto">
+                @can('leave.create')
                 <a href="#" class="btn add-btn" data-bs-toggle="modal" data-bs-target="#add_leave"><i
                         class="fa fa-plus"></i> Add Leave</a>
+                @endcan
             </div>
         </div>
     </div>

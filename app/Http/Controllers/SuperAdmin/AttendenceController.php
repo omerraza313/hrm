@@ -30,12 +30,14 @@ class AttendenceController extends Controller {
 
     public function index(Request $request)
     {
+        $this->authorize('attendances.index');
         $data = $this->attendenceService->getAttendenceData($request->all());
         return view('admin.attendence.regular.view', $data);
     }
 
     public function update(AttendenceUpdateRequest $request)
     {
+        $this->authorize('attendance.edit');
         $data = $request->validated();
         $updateStatus = $this->attendenceService->updateAttendence($data);
         if ($updateStatus) {

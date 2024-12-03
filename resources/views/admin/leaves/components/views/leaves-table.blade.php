@@ -46,12 +46,15 @@
                         <td>{{ ucfirst($leave_plan->leave_gender_type) }}</td>
                         <td>{{ $totalDays }}</td>
                         <td>
+                        @can('leave.edit')
                         <button class="btn btn-primary btn-sm text-white"
                         onclick="openEditModal('{{ route('admin.leave.plan.edit', $leave_plan->id) }}')">Edit</button>
-
+                        @endcan
+                        @can('leave.delete')
                             <button class="btn btn-danger btn-sm text-white"
                             onclick="openDeleteModal('{{ route('admin.leave.plan.delete', $leave_plan->id) }}')">Delete</button>
                         </td>
+                        @endcan
                     </tr>
                 @endforeach
             @endif

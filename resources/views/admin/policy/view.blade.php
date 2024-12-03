@@ -15,9 +15,11 @@
                     <li class="breadcrumb-item active">Policies</li>
                 </ul>
             </div>
+            @can('policy.create')
             <div class="col-auto float-end ms-auto">
                 <a href="#" class="btn add-btn" data-bs-toggle="modal" data-bs-target="#add_policy"><i
                         class="fa fa-plus"></i> Add Policy</a>
+            @endcan
             </div>
             <div class="col-auto float-end ms-auto">
                 <a href="#" class="btn add-btn" data-bs-toggle="modal" data-bs-target="#swap_policy"><i

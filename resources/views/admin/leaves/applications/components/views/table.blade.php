@@ -77,12 +77,16 @@
                                                     class="fa fa-dot-circle-o text-danger"></i> Declined</a>
                                         @endif
                                         <div class="dropdown-menu dropdown-menu-right">
+                                            @can('leave.approve')
                                             <a class="dropdown-item" href="#"
                                                 onclick="changeApproveStatus('Approved', '{{ $apply_leave->id }}', '{{ route('admin.leave.application.update.status') }}?apply_leave_id={{ $apply_leave->id }}&status={{ \App\Enums\ApprovedStatusEnum::Approved->value }}');"><i
                                                     class="fa fa-dot-circle-o text-success"></i> Approved</a>
+                                            @endcan
+                                            @can('leave.reject')
                                             <a class="dropdown-item" href="#"
                                                 onclick="changeApproveStatus('Declined', '{{ $apply_leave->id }}', '{{ route('admin.leave.application.update.status') }}?apply_leave_id={{ $apply_leave->id }}&status={{ \App\Enums\ApprovedStatusEnum::Declined->value }}');"><i
                                                     class="fa fa-dot-circle-o text-danger"></i> Declined</a>
+                                            @endcan
                                         </div>
                                     </div>
                                 </td>
@@ -91,13 +95,17 @@
                                         <a href="#" class="action-icon dropdown-toggle" data-bs-toggle="dropdown"
                                             aria-expanded="false"><i class="material-icons">more_vert</i></a>
                                         <div class="dropdown-menu dropdown-menu-right">
+                                            @can('leave.show')
                                             <a class="dropdown-item" href="#"
                                                 onclick="viewLeaveFunction('{{ $apply_leave }}');"><i
                                                     class="fa fa-pencil m-r-5"></i> View</a>
+                                            @endcan
+                                            @can('leave.delete')
                                             <a class="dropdown-item" href="#"
                                                 onclick="deleteLeaveFunction('{{ route('admin.delete.leave.application', $apply_leave->id) }}');"><i
                                                     class="fa fa-trash-o m-r-5"></i>
                                                 Delete</a>
+                                            @endcan
                                         </div>
                                     </div>
                                 </td>
