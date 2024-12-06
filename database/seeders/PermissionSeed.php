@@ -18,6 +18,7 @@ class PermissionSeed extends Seeder
         $permissionArr = [
             'manage_employees' => [
                 'employees.index',
+                'employees.create',
                 'employee.show',
                 'employees.edit',
                 'employees.delete',
@@ -34,24 +35,28 @@ class PermissionSeed extends Seeder
             'manage_departments' => [
                 'departments.index',
                 'department.show',
+                'department.create',
                 'department.edit',
                 'department.delete',
             ],
             'manage_designations' => [
                 'designations.index',
                 'designation.show',
+                'designation.create',
                 'designation.edit',
                 'designation.delete',
             ],
             'manage_leaves' => [
                 'leaves.index',
                 'leave.show',
+                'leave.create',
                 'leave.edit',
                 'leave.delete',
             ],
             'manage_leaves' => [
                 'leaves.index',
                 'leave.show',
+                'leave.create',
                 'leave.edit',
                 'leave.delete',
                 'leave.apply',
@@ -61,12 +66,14 @@ class PermissionSeed extends Seeder
             'manage_policies' => [
                 'policies.index',
                 'policy.show',
+                'policy.create',
                 'policy.edit',
                 'policy.delete',
             ],
             'manage_policies' => [
                 'policies.index',
                 'policy.show',
+                'policy.create',
                 'policy.edit',
                 'policy.delete',
                 'policy.assign',
@@ -74,6 +81,7 @@ class PermissionSeed extends Seeder
             'manage_roles' => [
                 'roles.index',
                 'role.show',
+                'role.create',
                 'role.edit',
                 'role.delete',
                 'role.assign-permissions',
@@ -88,18 +96,7 @@ class PermissionSeed extends Seeder
         
         // remove this code snippet once removed from server
         $removePermissionArr = [
-            'add_department',
-            'edit_department',
-            'view_department',
-            'delete_department',
-            'add_designation',
-            'edit_designation',
-            'view_designation',
-            'delete_designation',
-            'add_employee',
-            'edit_employee',
-            'view_employee',
-            'delete_employee',
+
         ];
 
         foreach ($removePermissionArr as $permissionName) {
