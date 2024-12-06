@@ -26,6 +26,7 @@ $route = request()->route();
                                 Dashboard</a></li>
                     </ul>
                 </li> --}}
+                @can('leaves.index')
                 <li class="submenu">
                     <a href="#" class=""><i class="la la-user"></i> <span> Applications</span> <span
                             class="menu-arrow"></span></a>
@@ -40,8 +41,11 @@ $route = request()->route();
                         @endif
                     </ul>
                 </li>
+                @endcan
+
 
                 {{-- Attendence --}}
+                @can('attendances.index')
                 <li class="{{ Route::is('employee.attendence.view') ? 'active' : '' }}">
                     <a href="{{ route('employee.attendence.view') }}"><i class="la la-table"></i><span>Attendence</span></a></li>
                 </li>
@@ -63,6 +67,7 @@ $route = request()->route();
                         </ul>
                     </li>
                 @endif
+                @endcan
             </ul>
         </div>
     </div>
