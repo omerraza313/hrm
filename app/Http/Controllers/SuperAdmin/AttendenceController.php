@@ -10,12 +10,15 @@ use Carbon\Carbon;
 use App\Models\Attendence;
 use Illuminate\Http\Request;
 use App\Enums\AttendenceEnum;
+use App\Enums\RolesEnum;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Services\AttendenceService;
 use App\Http\Controllers\Controller;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Http\Requests\Attendence\AttendenceUpdateRequest;
+use App\Models\DeviceLog;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -28,12 +31,207 @@ class AttendenceController extends Controller {
     {
     }
 
+    // public function index(Request $request)
+    // {
+    //     $this->authorize('attendances.index');
+    //     $data = $this->attendenceService->getAttendenceData($request->all());
+    //     return view('admin.attendence.regular.view', $data);
+    // }
+
     public function index(Request $request)
     {
-        $this->authorize('attendances.index');
-        $data = $this->attendenceService->getAttendenceData($request->all());
-        return view('admin.attendence.regular.view', $data);
+        $employee_id = $request->employee_id ?? null;
+        $from_date = $request->from_date ?? null;
+        $to_date = $request->to_date ?? null;
+
+        $uniqueDatesQuery = DeviceLog::query();
+        
+        if($employee_id) {
+            $employee = User::where('id', $employee_id)->with(['policy.working_settings'])->first();
+            $uniqueDatesQuery->where('user_id', $employee->id);
+        }
+
+        if($from_date) {
+            $carbonDate = Carbon::createFromFormat('m/d/Y', $from_date);
+            $formattedDate = $carbonDate->format('Y-m-d');
+            $uniqueDatesQuery->where('date' , '>=', $formattedDate);
+        }
+
+        if($to_date) {
+            $carbonDate = Carbon::createFromFormat('m/d/Y', $to_date);
+            $formattedDate = $carbonDate->format('Y-m-d');
+            $uniqueDatesQuery->where('date', '<=', $formattedDate);
+        }
+        
+        $uniqueDates = $uniqueDatesQuery
+        ->selectRaw('date')
+        ->groupBy('date')
+        ->orderBy('date', 'desc')->get();
+        // Step 2: Fetch all logs for each unique date and user
+        $newAttendanceData = $uniqueDates->map(function ($logDate) use ($employee) {
+            // Fetch logs for all users for the current date
+            $logsForDate = DeviceLog::whereDate('date', $logDate->date)
+                ->where('user_id', $employee->id)
+                ->orderBy('time')
+                ->get();
+            // Group the logs by user_id
+            $attendanceByUser = $logsForDate->groupBy('user_id')->map(function ($logsForUser) use ($logDate, $employee) {
+                $checkinTime = null;
+                $totalMinutes = 0;
+                $earnedHoursFormatted = '00:00:00';
+                if ($logsForUser->isNotEmpty()) {
+                    // Calculate earned time based on first and last log of the day
+                    $firstLogTime = Carbon::parse($logsForUser->first()->time);
+                    $lastLogTime = Carbon::parse($logsForUser->last()->time);
+
+                    $effectiveHours = $firstLogTime->diff($lastLogTime);
+                    $earnedHoursFormatted = sprintf('%02d:%02d:%02d', $effectiveHours->h, $effectiveHours->i, $effectiveHours->s);
+                    
+                    // Find the first "CheckIn" entry for check-in time
+                    foreach ($logsForUser as $log) {
+                        if ($log->type === 'CheckIn') {
+                            $checkinTime = Carbon::parse($log->time)->format('h:i A');
+                            $firsCheckIn = $checkinTime; // 12-hour format without seconds
+                            break;
+                        }
+                    }
+
+                    // Calculate effective time spent across all CheckIn and CheckOut pairs
+                    for ($i = 0; $i < $logsForUser->count(); $i++) {
+                        $currentLog = $logsForUser[$i];
+
+                        if ($currentLog->type === 'CheckIn') {
+                            $checkInTime = Carbon::parse($currentLog->time);
+
+                            // Look for the next CheckOut log after this CheckIn
+                            for ($j = $i + 1; $j < $logsForUser->count(); $j++) {
+                                if ($logsForUser[$j]->type === 'CheckOut') {
+                                    $checkOutTime = Carbon::parse($logsForUser[$j]->time);
+                                    $minutesSpent = $checkInTime->diffInMinutes($checkOutTime);
+
+                                    $totalMinutes += $minutesSpent;
+
+                                    // Move index to the position of this CheckOut to continue
+                                    $i = $j;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    $policy = $employee->policy[0];
+                    $earnedHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
+
+                    $shift_start = Carbon::parse($policy->working_settings->shift_start);
+                    $calculatedLeniency = $shift_start->addMinutes($policy->working_settings->late_c_l_t);
+                    $shift_close = $policy->working_settings->shift_close;
+                    
+                    $firstCheckIn = Carbon::parse($firsCheckIn);
+                    if($firstCheckIn->lt($calculatedLeniency)){
+                        $status = 1;
+                    } else {
+                        $status = 0;
+                    }
+                    $gross_time = DateHelper::differenceHoursMinutes2($policy->working_settings->shift_start, $shift_close);                    
+
+                    $earned_seconds = DateHelper::convert_time_to_seconds($earnedHours);
+                    $gross_seconds = DateHelper::convert_time_to_seconds($gross_time);
+                    $attendence_visual = (int)(($earned_seconds*100) / $gross_seconds );
+
+
+                    return [
+                        'user_id' => $logsForUser->first()->user_id,
+                        'checkin_time' => $checkinTime,
+                        'effective_time' => $earnedHoursFormatted,
+                        'earned_time' => $earnedHours,
+                        'gross_time' => $gross_time,
+                        'device_logs' => $logsForUser,
+                        'date' => $logDate->date,
+                        'status' => $status,
+                        'attendence_visual' => $attendence_visual
+                    ];
+                } else {
+                    return [
+                        'user_id' => $logsForUser->first()->user_id,
+                        'checkin_time' => null,
+                        'earned_time' => '00:00:00',
+                        'effective_time' => '00:00:00',
+                        'gross_time' => '00:00:00',
+                        'device_logs' => [],
+                        'date' => $logDate->date,
+                        'status' => 3,
+                        'attendence_visual' => ''
+
+                    ];
+                }
+            });
+
+            return $attendanceByUser;
+        });
+
+        // Flatten the nested arrays if necessary
+        $flattenedAttendanceData = $newAttendanceData->flatten(1);
+        // Return the view with all users' attendance data
+        
+        $employees = User::Role(RolesEnum::Employee->value)->get();
+
+        return view('admin.attendence.regular.view', compact('flattenedAttendanceData', 'employees'));
     }
+
+    public function fetch_device_log(Request $request)
+    {
+        $arrivalDate = $request->input('arrival_date');
+        $userId = $request->input('user_id');
+
+        // Fetch the device logs based on the arrival date and user ID
+        $deviceLogs = DeviceLog::where('user_id', $userId)
+            ->where('date', $arrivalDate)
+            ->orderBy('time')
+            ->get();
+
+        $result = [];
+        $count = $deviceLogs->count();
+
+        for ($i = 0; $i < $count; $i++) {
+            $currentLog = $deviceLogs[$i];
+
+            // Check if the current log is a CheckIn
+            if ($currentLog->type == 'CheckIn') {
+                $checkinTime = date('g:i A', strtotime($currentLog->time));
+                $nextCheckoutTime = null;
+
+                // Look for the next Checkout log
+                for ($j = $i + 1; $j < $count; $j++) {
+                    if ($deviceLogs[$j]->type == 'CheckOut') {
+                        $nextCheckoutTime = $deviceLogs[$j]->time;
+                        break;
+                    }
+                }
+
+                // If we found a Checkout log, calculate time spent
+                if ($nextCheckoutTime) {
+                    $checkoutTime = date('g:i A', strtotime($nextCheckoutTime));
+                    $timeSpent = (strtotime($nextCheckoutTime) - strtotime($currentLog->time)) / 60; // in minutes
+
+                    $result[] = [
+                        'device_id' => $currentLog->device_id,
+                        'arrivalDate' => $arrivalDate,
+                        'checkin' => $checkinTime,
+                        'checkout' => $checkoutTime,
+                        'time_spent' => "{$timeSpent} Min"
+                    ];
+                }
+            }
+
+            // Check if the current log is a CheckOut
+            if ($currentLog->type == 'CheckOut') {
+                // In case of consecutive CheckOuts, we just skip to the next iteration
+                continue;
+            }
+        }
+
+        return response()->json($result);
+    }
+
 
     public function update(AttendenceUpdateRequest $request)
     {
@@ -44,7 +242,6 @@ class AttendenceController extends Controller {
             return redirect()->back()->with('success', 'Attendence Updated Successfully');
         }
         return redirect()->back()->with('error', 'Attendence Not Updated');
-
     }
 
     public function export_old(Request $request)

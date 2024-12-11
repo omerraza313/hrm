@@ -24,7 +24,8 @@ Route::middleware(['web', 'role:employee'])->prefix('employee')->name('employee.
     Route::post('/attendence/mark/arrival', [AttendenceController::class, 'mark_arrival_attendance'])->name('attendence.mark.arrival');
     Route::post('/attendence/mark/leave/{id?}', [AttendenceController::class, 'mark_leave_attendance'])->name('attendence.mark.leave');
 
-
+    Route::get('fetch_device_log', [AttendenceController::class, 'fetch_device_log'])->name('fetch.device_log');
+    
     // Manager
     Route::get('/attendence/manager_view', [AttendenceController::class, 'attendence_view'])->name('employee.manager.attendence.regular.view');
     Route::get('/attendence/late_view', [AttendenceController::class, 'late_commers'])->name('employee.manager_view');
