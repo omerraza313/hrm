@@ -13,6 +13,7 @@ use App\Http\Controllers\SuperAdmin\EmployeeController as SuperAdminEmployeeCont
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdmin\DepartmentController as SuperAdminDepartmentController;
 use App\Http\Controllers\SuperAdmin\DesignationController as SuperAdminDesignationController;
+use App\Http\Controllers\SuperAdmin\DeviceLogController;
 use App\Http\Controllers\SuperAdmin\EmployeeBankController as SuperAdminEmployeeBankController;
 use App\Http\Controllers\SuperAdmin\PersonalInfoController as SuperAdminPersonalInfoController;
 use App\Http\Controllers\SuperAdmin\FamilyContactController as SuperAdminFamilyContactController;
@@ -111,7 +112,13 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('/attendence/update', [AttendenceController::class, 'update'])->name('admin.attendence.update');
         Route::get('/attendance/export', [AttendenceController::class, 'export'])->name('admin.attendence.export');
         Route::get('/attendance/adminexport', [AttendenceController::class, 'adminexport'])->name('admin.attendence.adminexport');
+        Route::delete('/attendance/device_log/{log}', [AttendenceController::class, 'deleteDeviceLog'])->name('admin.attendence.device-log.delete');
+        Route::get('fetch_device_log', [AttendenceController::class, 'fetch_device_log'])->name('fetch.device_log');
 
+        // Route::resource('device-logs', DeviceLogController::class);
+        Route::get('/device-logs/{log}/edit', [DeviceLogController::class, 'edit']);
+        Route::put('/device-logs/{log}', [DeviceLogController::class, 'update']);
+        Route::delete('/device-logs/{log}', [DeviceLogController::class, 'destroy']);
 
         // Late Comers Routes
         Route::get('/attendence/late/view', [LateComerController::class, 'index'])->name('admin.attendence.late.view');
