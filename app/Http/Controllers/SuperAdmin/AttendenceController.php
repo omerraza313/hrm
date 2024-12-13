@@ -43,6 +43,7 @@ class AttendenceController extends Controller {
         $employee_id = $request->employee_id ?? null;
         $from_date = $request->from_date ?? null;
         $to_date = $request->to_date ?? null;
+        $employees = User::Role(RolesEnum::Employee->value)->get();
 
         $uniqueDatesQuery = DeviceLog::query();
         
@@ -67,6 +68,11 @@ class AttendenceController extends Controller {
         ->selectRaw('date')
         ->groupBy('date')
         ->orderBy('date', 'desc')->get();
+
+        if(!$employee_id) {
+            return view('admin.attendence.regular.view', ['flattenedAttendanceData' => [], 'employees' => $employees]);
+        }
+
         // Step 2: Fetch all logs for each unique date and user
         $newAttendanceData = $uniqueDates->map(function ($logDate) use ($employee) {
             // Fetch logs for all users for the current date
@@ -147,7 +153,9 @@ class AttendenceController extends Controller {
                         'device_logs' => $logsForUser,
                         'date' => $logDate->date,
                         'status' => $status,
-                        'attendence_visual' => $attendence_visual
+                        'attendence_visual' => $attendence_visual,
+                        'shift_start' => $policy->working_settings->shift_start,
+                        'leniency' => $policy->working_settings->late_c_l_t
                     ];
                 } else {
                     return [
@@ -159,7 +167,9 @@ class AttendenceController extends Controller {
                         'device_logs' => [],
                         'date' => $logDate->date,
                         'status' => 3,
-                        'attendence_visual' => ''
+                        'attendence_visual' => '',
+                        'shift_start' => '',
+                        'leniency' => ''
 
                     ];
                 }
@@ -172,7 +182,6 @@ class AttendenceController extends Controller {
         $flattenedAttendanceData = $newAttendanceData->flatten(1);
         // Return the view with all users' attendance data
         
-        $employees = User::Role(RolesEnum::Employee->value)->get();
 
         return view('admin.attendence.regular.view', compact('flattenedAttendanceData', 'employees'));
     }

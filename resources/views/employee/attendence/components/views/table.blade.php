@@ -25,42 +25,73 @@ use App\Helpers\DateHelper;
                         <th>#</th>
                         <th>Date </th>
                         <th>Attendence visual</th>
+                        <th>Shift Start</th>
+                        <th>Leniency</th>
                         <th>Arrival</th>
                         <th>Earned Hrs</th>
                         <th>Effective Hrs</th>
                         <th>Gross Hrs</th>
+                        <th>Status</th>
                         <th>Log</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($newAttendanceData as $key=>$data)
                     @php
-                    //$attendence = (object) $attendence;
+                    $data = (object) $data;
                     //dd($attendence);
                     //dd($attendence->user);
 
                     @endphp
                     <tr>
                         <td>{{++$key}}</td>
-                        <td>{{$data['date']}}</td>
+                        <td>{{$data->date}}</td>
                         <td>
                             <div class="progress progress-xs">
                                 <div class="progress-bar progress-bar-striped bg-primary" role="progressbar"
-                                    style="width: 40%" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
+                                     style="width: {{ $data->attendence_visual }}%"
+                                     aria-valuenow="{{ $data->attendence_visual }}" aria-valuemin="0"
+                                     aria-valuemax="100">
+                                </div>
                             </div>
                         </td>
+                        <td>{{$data->shift_start}}</td>
+                        <td>{{$data->leniency}}</td>
                         <td>
-                            @if($data['checkin_time'])
-                            {{ \Carbon\Carbon::parse($data['checkin_time'])->format('h:i A') }}
+                            @if($data->checkin_time)
+                            {{ \Carbon\Carbon::parse($data->checkin_time)->format('h:i A') }}
                             @else
                             --:--:--
                             @endif
                         </td>
-                        <td>{{$data['earned_time']}}</td>
-                        <td>{{$data['effective_time']}}</td>
-                        <td>08:00:00</td>
+                        <td>{{$data->earned_time}}</td>
+                        <td>{{$data->effective_time}}</td>
+                        <td>{{$data->gross_time}}</td>
                         <td>
-                            <button class="btn btn-primary" onclick="fetchDeviceLogs('{{ $data['date'] }}', {{ $data['user_id'] }})">View</button>
+                            @if ($data->status == \App\Enums\AttendenceEnum::OnTime->value)
+                                <span class="bg-success text-white" style="padding: 8px 8px; border-radius: 100%;"><i
+                                        class="fa fa-check"></i></span>
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
+                            @elseif ($data->status == \App\Enums\AttendenceEnum::Late->value)
+                                <span class="bg-primary text-white" style="padding: 8px 13px; border-radius: 100%;"><i
+                                        class="fa fa-exclamation"></i></span>
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
+                            @elseif($data->status == \App\Enums\AttendenceEnum::Leave->value)
+                                <span class="bg-info text-white" style="padding: 8px 13px; border-radius: 100%;"><i
+                                        class="fa fa-exclamation"></i></span>
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
+                            @elseif($data->status == \App\Enums\AttendenceEnum::Holiday->value)
+                                <span class="bg-warning text-white" style="padding: 8px 13px; border-radius: 100%;"><i
+                                        class="fa fa-exclamation"></i></span>
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
+                            @elseif($data->status == \App\Enums\AttendenceEnum::Absent->value)
+                                <span class="bg-danger text-white" style="padding: 8px 13px; border-radius: 100%;"><i
+                                        class="fa fa-exclamation"></i></span>
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
+                            @endif
+                        </td>
+                        <td>
+                            <button class="btn btn-primary" onclick="fetchDeviceLogs('{{ $data->date }}', '{{ $data->user_id }}')">View</button>
                         </td>
                     </tr>
                     @endforeach
