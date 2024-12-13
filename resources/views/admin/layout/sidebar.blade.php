@@ -82,6 +82,9 @@
                         <li><a class="{{ Route::is('admin.attendence.late.view') ? 'active' : '' }}"
                                 href="{{ route('admin.attendence.late.view') }}?employee_id=&from_date={{ \Carbon\Carbon::now()->format('m/d/Y') }}&to_date=">Late
                                 Comers</a></li>
+
+                        <li><a class="{{ Route::is('device-logs.index') ? 'active' : '' }}"
+                                href="{{ route('device-logs.index') }}"> Device Logs</a></li>
                     </ul>
                 </li>
                 @endcan

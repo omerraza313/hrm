@@ -116,9 +116,8 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('fetch_device_log', [AttendenceController::class, 'fetch_device_log'])->name('fetch.device_log');
 
         // Route::resource('device-logs', DeviceLogController::class);
-        Route::get('/device-logs/{log}/edit', [DeviceLogController::class, 'edit']);
-        Route::put('/device-logs/{log}', [DeviceLogController::class, 'update']);
-        Route::delete('/device-logs/{log}', [DeviceLogController::class, 'destroy']);
+        Route::get('/device-logs/datatables', [DeviceLogController::class, 'datatable'])->name('device-logs.datatable');
+        Route::resource('device-logs', DeviceLogController::class);
 
         // Late Comers Routes
         Route::get('/attendence/late/view', [LateComerController::class, 'index'])->name('admin.attendence.late.view');

@@ -36,7 +36,7 @@ class AttendenceController extends Controller {
     public function index(Request $request)
     {
         $currentMonth = Carbon::now()->month;
-
+        $employee = Auth::user();
         if ($request->has('filterMonth')) {
             $currentMonth = $request->input('filterMonth');
         }
@@ -53,7 +53,7 @@ class AttendenceController extends Controller {
             ->get();
 
         // Step 2: Fetch all logs for each unique date
-        $newAttendanceData = $uniqueDates->map(function ($logDate) {
+        $newAttendanceData = $uniqueDates->map(function ($logDate) use ($employee) {
             $logsForDate = DeviceLog::where('user_id', Auth::id())
                 ->whereDate('date', $logDate->date)
                 ->orderBy('time')
@@ -73,6 +73,7 @@ class AttendenceController extends Controller {
                 foreach ($logsForDate as $log) {
                     if ($log->type === 'CheckIn') {
                         $checkinTime = Carbon::parse($log->time)->format('h:i A'); // 12-hour format without seconds
+                        $firsCheckIn = $checkinTime; // 12-hour format without seconds
                         break;
                     }
                 }
@@ -99,16 +100,37 @@ class AttendenceController extends Controller {
                         }
                     }
                 }
-
+                $policy = $employee->policy[0];
+                
                 $earnedHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
+                $shift_start = Carbon::parse($policy->working_settings->shift_start);
+                $calculatedLeniency = $shift_start->addMinutes($policy->working_settings->late_c_l_t);
+                $shift_close = $policy->working_settings->shift_close;
+                
+                $firstCheckIn = Carbon::parse($firsCheckIn);
+                if($firstCheckIn->lt($calculatedLeniency)){
+                    $status = 1;
+                } else {
+                    $status = 0;
+                }
+                $gross_time = DateHelper::differenceHoursMinutes2($policy->working_settings->shift_start, $shift_close);                    
+
+                $earned_seconds = DateHelper::convert_time_to_seconds($earnedHours);
+                $gross_seconds = DateHelper::convert_time_to_seconds($gross_time);
+                $attendence_visual = (int)(($earned_seconds*100) / $gross_seconds );
+
 
                 return [
-                    'date' => $logDate->date,
+                    'user_id' => $employee->id,
                     'checkin_time' => $checkinTime,
                     'effective_time' => $earnedHoursFormatted,
                     'earned_time' => $earnedHours,
-                    'device_logs' => $logsForDate,
-                    'user_id' => Auth::id()
+                    'gross_time' => $gross_time,
+                    'date' => $logDate->date,
+                    'status' => $status,
+                    'attendence_visual' => $attendence_visual,
+                    'shift_start' => $policy->working_settings->shift_start,
+                    'leniency' => $policy->working_settings->late_c_l_t
                 ];
             } else {
                 return [
@@ -116,8 +138,6 @@ class AttendenceController extends Controller {
                     'checkin_time' => null,
                     'earned_time' => '00:00:00',
                     'effective_time' => '00:00:00',
-                    'device_logs' => [],
-                    'user_id' => Auth::id()
                 ];
             }
         });

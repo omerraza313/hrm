@@ -18,6 +18,8 @@ use App\Helpers\DateHelper;
                         <th>User </th>
                         <th>Date </th>
                         <th>Attendence visual</th>
+                        <th>Shift Start</th>
+                        <th>Leniency</th>
                         <th>Arrival</th>
                         <th>Earned Hrs</th>
                         <th>Effective Hrs</th>
@@ -47,6 +49,8 @@ use App\Helpers\DateHelper;
                                 </div>
                             </div>
                         </td>
+                        <td>{{$data->shift_start}}</td>
+                        <td>{{$data->leniency}}</td>
                         <td>
                             @if($data->checkin_time)
                             {{ \Carbon\Carbon::parse($data->checkin_time)->format('h:i A') }}
