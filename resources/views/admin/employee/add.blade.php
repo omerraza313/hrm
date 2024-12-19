@@ -243,6 +243,13 @@
                                 <label>Designation <span class="text-danger">*</span></label>
                                 <select class="select" name="add_designation" id="add_designation">
                                     <option>Select Designation</option>
+                                    @if (isset($designations) && $designations)
+                                        @foreach ($designations as $designation)
+                                            <option value="{{ $designation->id }}"
+                                                @if (old('add_designation') == $designation->id) selected @endif>
+                                                {{ $designation->name }}</option>
+                                        @endforeach
+                                    @endif
                                 </select>
                                 <x-field-validation errorname="add_designation" />
                             </div>
