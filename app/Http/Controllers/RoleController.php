@@ -31,18 +31,19 @@ class RoleController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:roles,name',
-            'permissions' => 'required|array|min:1',
+            'permissions' => 'array',
             'permissions.*' => 'exists:permissions,id',
         ], [
             'permissions.required' => 'You must select at least one permission.',
             'permissions.min' => 'You must select at least one permission.',
         ]);
-
         $role = Role::create(['name' => $request->name]);
 
-        $permissions = Permission::whereIn('id', $request->permissions)->pluck('name')->toArray();
+        $permissions = Permission::whereIn('id', $request->permissions ?? [])->pluck('name')->toArray();
 
-        $role->syncPermissions($permissions);
+        if(is_array($permissions) && count($permissions) > 0){
+            $role->syncPermissions($permissions);
+        }else{$role->syncPermissions([]);}
 
         return redirect()->route('roles.index')->with('success', 'Role created successfully.');
     }
@@ -72,7 +73,7 @@ class RoleController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
-            'permissions' => 'required|array|min:1',
+            'permissions' => 'array',
             'permissions.*' => 'exists:permissions,id',
         ], [
             'permissions.required' => 'You must select at least one permission.',
@@ -81,10 +82,11 @@ class RoleController extends Controller
 
         $role->update($request->all());
 
-        $permissions = Permission::whereIn('id', $request->permissions)->pluck('name')->toArray();
+        $permissions = Permission::whereIn('id', $request->permissions ?? [])->pluck('name')->toArray();
 
-        $role->syncPermissions($permissions);
-
+        if(is_array($permissions) && count($permissions) > 0){
+            $role->syncPermissions($permissions);
+        }else{$role->syncPermissions([]);}
         return redirect()->route('roles.index')->with('success', 'Role updated successfully.');
     }
 

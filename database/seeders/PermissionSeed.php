@@ -56,6 +56,13 @@ class PermissionSeed extends Seeder
                 'leave.approve',
                 'leave.reject',
             ],
+            'manage_leave_types' => [
+                'leave_types.index',
+                'leave_type.show',
+                'leave_type.create',
+                'leave_type.edit',
+                'leave_type.delete'
+            ],
             'manage_policies' => [
                 'policies.index',
                 'policy.show',
