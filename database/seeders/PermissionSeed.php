@@ -52,23 +52,9 @@ class PermissionSeed extends Seeder
                 'leave.create',
                 'leave.edit',
                 'leave.delete',
-            ],
-            'manage_leaves' => [
-                'leaves.index',
-                'leave.show',
-                'leave.create',
-                'leave.edit',
-                'leave.delete',
                 'leave.apply',
                 'leave.approve',
                 'leave.reject',
-            ],
-            'manage_policies' => [
-                'policies.index',
-                'policy.show',
-                'policy.create',
-                'policy.edit',
-                'policy.delete',
             ],
             'manage_policies' => [
                 'policies.index',
