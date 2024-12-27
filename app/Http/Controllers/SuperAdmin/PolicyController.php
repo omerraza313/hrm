@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PolicyRequest\StorePolicyRequest;
+use App\Http\Requests\PolicyRequest\UpdatePolicyRequest;
 use App\Models\Policy;
 use App\Services\PolicyService;
 use Illuminate\Http\Request;
@@ -54,6 +55,45 @@ class PolicyController extends Controller {
         }
         return redirect()->back()->with('error', "Some Error Occured!");
     }
+
+    public function renderUpdateModal(Policy $policy) {
+        
+        $policy->load([
+            'pay_roll_settings',
+            'working_settings',
+            'working_day' => function ($query) {
+                $query->where('active', '1');
+            },
+            'overtime',
+            'holiday_overtime',
+            'departments' => function ($query) {
+                // Add your condition on the pivot table (assuming 'start_time' is the column name)
+                // $query->latest('start_time');
+                $query->withTrashed()->where('status', 1);
+            },
+            'users' => function ($query) {
+                // Add your condition on the pivot table (assuming 'start_time' is the column name)
+                // $query->latest('start_time');
+                // $query->orderBy('start_time', 'desc')->limit(1);
+                $query->where('status', 1);
+            }
+        ]);
+        $department_list = $this->policyService->get_department_list();
+        $employee_list = $this->policyService->get_enployee_list();
+            return view('admin.policy.components.modals.render-update-modal', get_defined_vars());
+    }
+
+    public function update(UpdatePolicyRequest $request, Policy $policy)
+    {
+        $data = $request->validated();
+
+        $storeStatus = $this->policyService->update($data, $policy->id);
+        if ($storeStatus) {
+            return redirect()->back()->with('success', "Policy add successfully!");
+        }
+        return redirect()->back()->with('error', "Some Error Occured!");
+    }
+
 
     public function delete($id)
     {

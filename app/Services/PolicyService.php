@@ -108,6 +108,148 @@ class PolicyService {
         return true;
     }
 
+    public function update($data, $policyId): bool
+    {
+        try {
+            DB::beginTransaction();
+
+            // Fetch the existing policy
+            $policy = Policy::find($policyId);
+            if (!$policy) {
+                throw new \Exception('Policy not found');
+            }
+
+            // Update the policy name
+            $policy->update([
+                'policy' => $data['add_policy_name']
+            ]);
+
+            // Update department association
+            $this->attach_department($policy->id, [$data['add_policy_department']]);
+
+            // Update employees association
+            $this->attach_employees($policy->id, [$data['add_policy_department']], $data['add_policy_employee']);
+
+            // Update or create the PolicyPayRollSetting
+            $payrollSetting = PolicyPayRollSetting::where('policy_id', $policy->id)->first();
+            if ($payrollSetting) {
+                $payrollSetting->update([
+                    'generation_type' => $data['add_policy_payslip_gen_type'],
+                    'off_days_per_month' => $data['add_policy_off_days'],
+                    'working_hours' => $data['add_policy_working_hours'],
+                    'max_shift_retaining_hours' => $data['add_policy_shift_hours']
+                ]);
+            } else {
+                PolicyPayRollSetting::create([
+                    'policy_id' => $policy->id,
+                    'generation_type' => $data['add_policy_payslip_gen_type'],
+                    'off_days_per_month' => $data['add_policy_off_days'],
+                    'working_hours' => $data['add_policy_working_hours'],
+                    'max_shift_retaining_hours' => $data['add_policy_shift_hours']
+                ]);
+            }
+
+            // Update or create the PolicyWorkingSetting
+            $workingSetting = PolicyWorkingSetting::where('policy_id', $policy->id)->first();
+            if ($workingSetting) {
+                $workingSetting->update([
+                    'shift_start' => $data['add_policy_shift_start'],
+                    'shift_close' => $data['add_policy_shift_close'],
+                    'late_c_l_t' => $data['add_policy_late_c_l_t'],
+                    'early_arrival_policy' => $data['add_policy_e_a_p'],
+                    'force_timeout' => $data['add_policy_force_timeout'],
+                    'timeout_policy' => $data['add_policy_timeout_policy'],
+                    'late_minute_monthly_bucket' => $data['add_policy_monthly_late_minute'],
+                    'late_comers_penalty' => $data['add_policy_late_comers_penalty'],
+                ]);
+            } else {
+                PolicyWorkingSetting::create([
+                    'policy_id' => $policy->id,
+                    'shift_start' => $data['add_policy_shift_start'],
+                    'shift_close' => $data['add_policy_shift_close'],
+                    'late_c_l_t' => $data['add_policy_late_c_l_t'],
+                    'early_arrival_policy' => $data['add_policy_e_a_p'],
+                    'force_timeout' => $data['add_policy_force_timeout'],
+                    'timeout_policy' => $data['add_policy_timeout_policy'],
+                    'late_minute_monthly_bucket' => $data['add_policy_monthly_late_minute'],
+                    'late_comers_penalty' => $data['add_policy_late_comers_penalty'],
+                ]);
+            }
+
+            // Update or create the working days
+            $workingDays = json_decode($data['add_policy_working_array']);
+            foreach ($workingDays as $workingDay) {
+                $existingWorkingDay = PolicyWorkingDay::where('policy_id', $policy->id)
+                                                    ->where('day', $workingDay->id)
+                                                    ->first();
+
+                if ($existingWorkingDay) {
+                    $existingWorkingDay->update([
+                        'start_time' => $workingDay->start_time,
+                        'close_time' => $workingDay->end_time,
+                        'active' => $workingDay->active,
+                    ]);
+                } else {
+                    PolicyWorkingDay::create([
+                        'policy_id' => $policy->id,
+                        'day' => $workingDay->id,
+                        'start_time' => $workingDay->start_time,
+                        'close_time' => $workingDay->end_time,
+                        'active' => $workingDay->active,
+                    ]);
+                }
+            }
+
+            // Update or create the overtime settings
+            $overtime = PolicyOvertime::where('policy_id', $policy->id)->first();
+            if ($overtime) {
+                $overtime->update([
+                    'ot_status' => $data['add_policy_overtime_status'],
+                    'ot_start' => $data['add_policy_ot_atfer_closing_duty'],
+                    'ot_min_minutes' => $data['add_policy_ot_min_minutes'],
+                    'ot_rate_status' => $data['add_policy_ot_rate'],
+                    'ot_rate' => $data['add_policy_ot_rate_value'],
+                    'ot_amount' => $data['add_policy_ot_amount'],
+                ]);
+            } else {
+                PolicyOvertime::create([
+                    'policy_id' => $policy->id,
+                    'ot_status' => $data['add_policy_overtime_status'],
+                    'ot_start' => $data['add_policy_ot_atfer_closing_duty'],
+                    'ot_min_minutes' => $data['add_policy_ot_min_minutes'],
+                    'ot_rate_status' => $data['add_policy_ot_rate'],
+                    'ot_rate' => $data['add_policy_ot_rate_value'],
+                    'ot_amount' => $data['add_policy_ot_amount'],
+                ]);
+            }
+
+            // Update or create the holiday overtime settings
+            $holidayOvertime = PolicyHolidayOvertime::where('policy_id', $policy->id)->first();
+            if ($holidayOvertime) {
+                $holidayOvertime->update([
+                    'holiday_ot_status' => $data['add_policy_holiday_ot'],
+                    'holiday_ot_rate' => $data['add_policy_holiday_ot_rate'],
+                    'holiday_ot_amount' => $data['add_policy_holiday_ot_amount'],
+                ]);
+            } else {
+                PolicyHolidayOvertime::create([
+                    'policy_id' => $policy->id,
+                    'holiday_ot_status' => $data['add_policy_holiday_ot'],
+                    'holiday_ot_rate' => $data['add_policy_holiday_ot_rate'],
+                    'holiday_ot_amount' => $data['add_policy_holiday_ot_amount'],
+                ]);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return false;
+        }
+
+        return true;
+    }
+
+
     private function attach_department($policy_id, array $departments = [], $sync = false)
     {
         $policy = Policy::with([

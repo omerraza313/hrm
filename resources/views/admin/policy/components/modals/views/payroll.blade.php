@@ -8,7 +8,7 @@
             onchange="payslipgenerationtypechange();">
             <option value="">Payslip Generation Type</option>
             @foreach (\App\Helpers\PolicyHelper::pay_gen_type() as $key => $gen_type)
-                <option value="{{ $key }}" @if ($key == old('add_policy_payslip_gen_type')) selected @endif>{{ $gen_type }}
+                <option value="{{ $key }}" @if ($key == old('add_policy_payslip_gen_type',  isset($policy) ? $policy->pay_roll_settings->generation_type : '')) selected @endif>{{ $gen_type }}
                 </option>
             @endforeach
         </select>
@@ -50,7 +50,7 @@
 <div class="col-lg-12 mt-3">
     <div class="form-group">
         <label>Off Days Allowed Per Month <span class="text-danger">*</span></label>
-        <input class="form-control" type="number" value="{{ old('add_policy_off_days') ?? 0 }}"
+        <input class="form-control" type="number" value="{{ old('add_policy_off_days',  isset($policy) ? $policy->pay_roll_settings->generation_type : '') ?? 0 }}"
             name="add_policy_off_days">
         <x-field-validation errorname="add_policy_off_days" />
     </div>
@@ -64,7 +64,7 @@
             <div class="form-group">
                 <label>Required Working Hours <span class="text-danger">*</span></label>
                 <input class="form-control" type="number" placeholder="Number of daily working hours"
-                    value="{{ old('add_policy_working_hours') }}" name="add_policy_working_hours">
+                    value="{{ old('add_policy_working_hours',  isset($policy) ? $policy->pay_roll_settings->working_hours : '') }}" name="add_policy_working_hours">
                 <x-field-validation errorname="add_policy_working_hours" />
             </div>
         </div>
@@ -81,8 +81,9 @@
                 <label>Max Shift Retaining Hours <span class="text-danger">*</span></label>
                 <input class="form-control" type="number"
                     placeholder="Numbers of hours system waits before starting new attendance session"
-                    name="add_policy_shift_hours" value="{{ old('add_policy_shift_hours') }}">
+                    name="add_policy_shift_hours" value="{{ old('add_policy_shift_hours',  isset($policy) ? $policy->pay_roll_settings->max_shift_retaining_hours : '') }}">
                 <x-field-validation errorname="add_policy_shift_hours" />
+                
             </div>
         </div>
     </div>

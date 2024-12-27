@@ -219,14 +219,24 @@ class AttendenceController extends Controller {
                 // If we found a Checkout log, calculate time spent
                 if ($nextCheckoutTime) {
                     $checkoutTime = date('g:i A', strtotime($nextCheckoutTime));
-                    $timeSpent = (strtotime($nextCheckoutTime) - strtotime($currentLog->time)) / 60; // in minutes
+                    // $timeSpent = (strtotime($nextCheckoutTime) - strtotime($currentLog->time)) / 60; // in minutes
+                     // Calculate the time difference in seconds
+                    $timeDifferenceInSeconds = strtotime($nextCheckoutTime) - strtotime($currentLog->time);
+
+                    // Convert seconds into hh:mm:ss format
+                    $hours = floor($timeDifferenceInSeconds / 3600);
+                    $minutes = floor(($timeDifferenceInSeconds / 60) % 60);
+                    $seconds = $timeDifferenceInSeconds % 60;
+
+                    // Format as hh:mm:ss
+                    $timeSpent = sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);
 
                     $result[] = [
                         'device_id' => $currentLog->device_id,
                         'arrivalDate' => $arrivalDate,
                         'checkin' => $checkinTime,
                         'checkout' => $checkoutTime,
-                        'time_spent' => "{$timeSpent} Min"
+                        'time_spent' => $timeSpent
                     ];
                 }
             }

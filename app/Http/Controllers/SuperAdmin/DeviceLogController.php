@@ -47,6 +47,7 @@ class DeviceLogController extends Controller
             'device_id' => 'required|string',
             'time' => 'required|date',
             'type' => 'required|string|in:CheckIn,CheckOut',
+            'remarks' =>  'nullable|string'
         ]);
 
         $input = $validated;
@@ -84,6 +85,7 @@ class DeviceLogController extends Controller
             'user_id' => 'required',
             'time' => 'required|date',
             'type' => 'required|string|in:CheckIn,CheckOut',
+            'remarks' =>  'nullable|string'
         ]);
 
         $input = $validated;
