@@ -103,6 +103,8 @@ Route::group(['middleware' => 'auth'], function () {
         // Policey Routes
         Route::get('/policy-view', [PolicyController::class, 'index'])->name('admin.policy.view');
         Route::post('/store-policy', [PolicyController::class, 'store'])->name('admin.policy.store');
+        Route::get('/render-update-policy-modal/{policy}', [PolicyController::class, 'renderUpdateModal'])->name('admin.policy.render-update-modal');
+        Route::post('/update-policy', [PolicyController::class, 'update'])->name('admin.policy.update');
         Route::delete('/delete/policy/{id}', [PolicyController::class, 'delete'])->name('admin.policy.delete');
         Route::post('/assign-policy', [PolicyController::class, 'assign'])->name('admin.policy.assign');
 

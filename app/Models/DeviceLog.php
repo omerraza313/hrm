@@ -18,7 +18,8 @@ class DeviceLog extends Model {
         'type',
         'date',
         'log_id',
-        'imported'
+        'imported',
+        'remarks',
     ];
 
     public function policy()

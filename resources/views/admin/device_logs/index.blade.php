@@ -41,6 +41,7 @@
                             <th>Device ID</th>
                             <th>Time </th>
                             <th>Type </th>
+                            <th>Remarks </th>
                             <th class="text-end">Action</th>
                         </tr>
                     </thead>
@@ -86,6 +87,10 @@
                     <div class="form-group">
                         <label for="">Time</label>
                         <input type="datetime-local" name="time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="">Remarks</label>
+                        <textarea name="remarks" class="form-control" required></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -134,6 +139,10 @@
                         <label for="">Time</label>
                         <input type="datetime-local" name="time" id="update_time" class="form-control" required>
                     </div>
+                    <div class="form-group">
+                        <label for="">Remarks</label>
+                        <textarea name="remarks" id="update_remarks" class="form-control" required></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" onclick="submitEditForm()" class="btn btn-primary">Update</button>
@@ -178,6 +187,10 @@
                 name: 'type'
             },
             {
+                data: 'remarks',
+                name: 'remarks'
+            },
+            {
                 data: 'action',
                 name: 'action',
                 orderable: false,
@@ -219,6 +232,7 @@
                 $('#update_type').val(response.device_log.type);
                 $('#update_user_id').val(response.device_log.user_id);
                 $('#update_time').val(response.device_log.time);
+                $('#update_remarks').text(response.device_log.remarks);
                 $('#updateModal').modal('show');
             },
             error: function(xhr) {

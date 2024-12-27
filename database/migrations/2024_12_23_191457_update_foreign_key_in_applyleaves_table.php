@@ -13,7 +13,6 @@ return new class extends Migration
         });
 
         Schema::table('applyleaves', function (Blueprint $table) {
-            $table->foreign('approved_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }

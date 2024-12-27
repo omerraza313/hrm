@@ -34,6 +34,11 @@
                                     onclick="openViewModal({{ json_encode($policy) }})"><i class="fa fa-eye m-r-5"></i>
                                     View</a>
                                 @endcan
+                                @can('policy.edit')
+                                <a class="dropdown-item" href="#"
+                                    onclick="openEditModal({{ $policy->id }})"><i class="fa fa-pencil m-r-5"></i>
+                                    Edit</a>
+                                @endcan
                                 @can('policy.assign')
                                 <a class="dropdown-item" href="#"
                                     onclick="openAssignModal({{ json_encode($policy) }})"><i
@@ -56,6 +61,7 @@
 
 @include('admin.policy.components.modals.deletemodal')
 @include('admin.policy.components.modals.viewmodal')
+@include('admin.policy.components.modals.editmodal')
 @include('admin.policy.components.modals.assignmodal')
 
 @push('modal-script')
@@ -90,6 +96,17 @@
                 </div>`);
             let modalId = "#view_policy";
             $(modalId).modal("show");
+        }
+
+        function openEditModal(policy) {
+
+            $.get('/admin/render-update-policy-modal/'+policy, function(response){
+                console.log(response);
+                $('#renderUpdateData').empty();
+                $('#renderUpdateData').append(response);
+                let modalId = "#edit_policy";
+                $(modalId).modal("show");
+            });
         }
     </script>
 @endpush
