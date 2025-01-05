@@ -29,15 +29,24 @@ function openEditModal(route, employee, image, roles) {
     $("#edit_department")
         .val(data.employee_details.department_id)
         .trigger("change.select2");
-    if (rolesArray.indexOf("manager") !== -1) {
-        $("#edit_role").val(2).trigger("change.select2");
-    } else {
-        $("#edit_role").val(1).trigger("change.select2");
+    if (rolesArray) {
+        $("#edit_role").val(rolesArray[0]).trigger("change.select2");
     }
+
+    // if (roles) {
+    //     $("#edit_role")
+    //         .val(roles.id)
+    //         .trigger("change.select2");
+    // }
 
     if (data.employee_details.manager) {
         $("#edit_report_manager")
             .val(data.employee_details.manager.id)
+            .trigger("change.select2");
+    }
+    if (data.employee_details.team_lead) {
+        $("#edit_report_team_lead")
+            .val(data.employee_details.team_lead.id)
             .trigger("change.select2");
     }
 

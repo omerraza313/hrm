@@ -24,7 +24,8 @@ class UserDetail extends Model {
         'user_id',
         'salary',
         'blood_group',
-        'manager_id'
+        'manager_id',
+        'team_lead_id'
     ];
 
 
@@ -47,6 +48,12 @@ class UserDetail extends Model {
     {
         return $this->hasOne(User::class, 'id', 'manager_id');
     }
+
+    public function team_lead()
+    {
+        return $this->hasOne(User::class, 'id', 'team_lead_id');
+    }
+
     public function setDobAttribute($value)
     {
         // dd($value);

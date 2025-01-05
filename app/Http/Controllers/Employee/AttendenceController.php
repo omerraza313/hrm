@@ -13,6 +13,7 @@ use App\Http\Requests\EmployeeRequests\Attendence\AttendenceMarkRequest;
 use App\Models\Attendence;
 use App\Models\DeviceLog;
 use App\Models\User;
+use App\Models\UserDetail;
 use App\Services\Employee\AttendenceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -35,26 +36,81 @@ class AttendenceController extends Controller {
     // }
     public function index(Request $request)
     {
-        $currentMonth = Carbon::now()->month;
-        $employee = Auth::user();
-        if ($request->has('filterMonth')) {
-            $currentMonth = $request->input('filterMonth');
+
+        if(!in_array(Auth::user()->getRoleNames()[0], ['manager', 'team lead'])){
+
+            $currentMonth = Carbon::now()->month;
+            $employee = Auth::user();
+            if ($request->has('filterMonth')) {
+                $currentMonth = $request->input('filterMonth');
+            }
+    
+            $currentYear = Carbon::now()->year;
+    
+            $uniqueDates = DeviceLog::where('user_id', $employee->id)
+                ->whereMonth('date', $currentMonth)
+                ->whereYear('date', $currentYear)
+                ->selectRaw('date')
+                ->groupBy('date')
+                ->orderBy('date', 'desc')
+                ->get();
+            
+            $newAttendanceData = $this->prepareAttendanceData($uniqueDates, $employee);
+
+            return view('employee.attendence.view', compact('newAttendanceData'));
         }
 
-        $currentYear = Carbon::now()->year;
+        if(Auth::user()->hasRole('manager')){
+            $teamLeads = Auth::user()->team_leads->pluck('id')->toArray();            
+            $employeeIds = UserDetail::whereIn('team_lead_id', $teamLeads)->pluck('user_id')->toArray();
+            $employeeIds = array_merge($employeeIds, $teamLeads);
 
-        // Step 1: Fetch unique dates from device_log for the specified user and month
-        $uniqueDates = DeviceLog::where('user_id', Auth::id())
-            ->whereMonth('date', $currentMonth)
-            ->whereYear('date', $currentYear)
-            ->selectRaw('date')
-            ->groupBy('date')
-            ->orderBy('date', 'desc')
-            ->get();
+        } else if(Auth::user()->hasRole('team lead')) {
+            $employeeIds = Auth::user()->employees->pluck('id')->toArray();
+        }
+        $employees = User::whereIn('id', $employeeIds)->get();
+        $employee_id = $request->employee_id ?? null;
+        $from_date = $request->from_date ?? null;
+        $to_date = $request->to_date ?? null;
 
-        // Step 2: Fetch all logs for each unique date
-        $newAttendanceData = $uniqueDates->map(function ($logDate) use ($employee) {
-            $logsForDate = DeviceLog::where('user_id', Auth::id())
+        $uniqueDatesQuery = DeviceLog::query();
+        
+        if($employee_id) {
+            $employee = User::where('id', $employee_id)->with(['policy.working_settings'])->first();
+            $uniqueDatesQuery->where('user_id', $employee->id);
+        }
+
+        if($from_date) {
+            $carbonDate = Carbon::createFromFormat('m/d/Y', $from_date);
+            $formattedDate = $carbonDate->format('Y-m-d');
+            $uniqueDatesQuery->where('date' , '>=', $formattedDate);
+        }
+
+        if($to_date) {
+            $carbonDate = Carbon::createFromFormat('m/d/Y', $to_date);
+            $formattedDate = $carbonDate->format('Y-m-d');
+            $uniqueDatesQuery->where('date', '<=', $formattedDate);
+        }
+        
+        $uniqueDates = $uniqueDatesQuery
+        ->selectRaw('date')
+        ->groupBy('date')
+        ->orderBy('date', 'desc')->get();
+
+        if(!$employee_id) {
+            return view('employee.attendence.view', ['newAttendanceData' => [], 'employees' => $employees]);
+        }
+
+        $newAttendanceData = $this->prepareAttendanceData($uniqueDates, $employee);
+
+        return view('employee.attendence.view', ['newAttendanceData' => $newAttendanceData, 'employees' => $employees]);
+
+    }
+
+    public function prepareAttendanceData($uniqueDates, $employee)
+    {
+        return $uniqueDates->map(function ($logDate) use ($employee) {
+            $logsForDate = DeviceLog::where('user_id', $employee->id)
                 ->whereDate('date', $logDate->date)
                 ->orderBy('time')
                 ->get();
@@ -141,8 +197,6 @@ class AttendenceController extends Controller {
                 ];
             }
         });
-
-        return view('employee.attendence.view', compact('newAttendanceData'));
     }
     
     public function fetch_device_log(Request $request)

@@ -19,6 +19,7 @@ use App\Models\DeactiveUser;
 use App\Models\FamilyContact;
 use App\Enums\AddressTypeEnum;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class EmployeeService {
     public function get_department_list()
@@ -47,14 +48,19 @@ class EmployeeService {
             'password' => Hash::make($data['add_password']),
             'image' => $image
         ]);
-        if ($employee->hasRole(RolesEnum::Manager->value) && $data['add_role'] = 1) {
-            $employee->removeRole(RolesEnum::Manager->value);
-        }
-        if ($data['add_role'] == '2' || $data['add_role'] == 2) {
-            $data['add_report_manager'] = null;
-            $employee->assignRole(RolesEnum::Manager);
-        }
-        $employee->assignRole(RolesEnum::Employee);
+
+        $role = Role::find($data['add_role']);
+
+
+        // if ($employee->hasRole(RolesEnum::Manager->value) && $data['add_role'] = 1) {
+        //     $employee->removeRole(RolesEnum::Manager->value);
+        // }
+        // if ($data['add_role'] == '2' || $data['add_role'] == 2) {
+        //     $data['add_report_manager'] = null;
+        //     $employee->assignRole(RolesEnum::Manager);
+        // }
+        $employee->assignRole($role);
+
         // dd($data);
         UserDetail::create([
             'pseudo_name' => $data['add_pseudo_name'],
@@ -70,6 +76,7 @@ class EmployeeService {
             'salary' => $data['add_salary'],
             'blood_group' => $data['add_blood_group'],
             'manager_id' => $data['add_report_manager'],
+            'team_lead_id' => $data['add_report_team_lead'] ?? null
         ]);
 
         DateLog::create([
@@ -172,7 +179,7 @@ class EmployeeService {
         if (!isset($data['designation'])) {
             $data['designation'] = null;
         }
-        $user = User::role('employee')
+        $user = User::has('employee_details')
             // ->whereDoesntHave('roles', function ($query) {
             //     $query->where('name', 'manager');
             // })
@@ -191,7 +198,9 @@ class EmployeeService {
             ->with([
                 'emergency_contacts',
                 'address',
-                'employee_details',
+                'employee_details.team_lead' => function ($query) {
+                    $query->withTrashed();
+                },
                 'employee_details.manager' => function ($query) {
                     $query->withTrashed();
                 },
@@ -218,7 +227,7 @@ class EmployeeService {
         return $managers;
     }
     public function update_employee(array|object $data, Employee $emp): bool
-    {
+    {   
         $employee = User::find($emp->id);
         if (isset($data['edit_image']) && $data['edit_image']) {
             $image = time() . '.' . $data['edit_image']->extension();
@@ -231,17 +240,21 @@ class EmployeeService {
         $employee_details = UserDetail::where('user_id', $employee->id)->first();
 
         if ($employee && $employee_details) {
-            if ($data['edit_role'] == 2) {
-                $data['edit_report_manager'] = null;
-                if (!$employee->hasRole(RolesEnum::Manager->value)) {
-                    $employee->assignRole(RolesEnum::Manager->value);
-                }
-            } else {
-                if ($employee->hasRole(RolesEnum::Manager->value)) {
-                    $employee->removeRole(RolesEnum::Manager->value);
-                }
-            }
-            $employee->update([
+            // if ($data['edit_role'] == 2) {
+            //     $data['edit_report_manager'] = null;
+            //     if (!$employee->hasRole(RolesEnum::Manager->value)) {
+            //         $employee->assignRole(RolesEnum::Manager->value);
+            //     }
+            // } else {
+            //     if ($employee->hasRole(RolesEnum::Manager->value)) {
+            //         $employee->removeRole(RolesEnum::Manager->value);
+            //     }
+            // }
+            
+            $role = Role::find($data['edit_role']);
+            $employee->syncRoles([$role]);
+            dd($employee->getRoleNames());
+            $employee->update([ 
                 'first_name' => $data['edit_first_name'],
                 'last_name' => $data['edit_last_name'],
                 'email' => $data['edit_email'],
@@ -267,6 +280,7 @@ class EmployeeService {
                 'salary' => $data['edit_salary'],
                 'blood_group' => $data['edit_blood_group'],
                 'manager_id' => $data['edit_report_manager'],
+                'team_lead_id' => $data['edit_report_team_lead'] ?? null
             ]);
 
             Salary::create([

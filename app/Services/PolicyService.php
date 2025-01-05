@@ -13,6 +13,7 @@ use App\Models\PolicyWorkingSetting;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PolicyService {
     public function get_department_list(): array|object
@@ -112,25 +113,18 @@ class PolicyService {
     {
         try {
             DB::beginTransaction();
-
-            // Fetch the existing policy
             $policy = Policy::find($policyId);
             if (!$policy) {
                 throw new \Exception('Policy not found');
             }
-
-            // Update the policy name
             $policy->update([
                 'policy' => $data['add_policy_name']
             ]);
 
-            // Update department association
             $this->attach_department($policy->id, [$data['add_policy_department']]);
 
-            // Update employees association
             $this->attach_employees($policy->id, [$data['add_policy_department']], $data['add_policy_employee']);
 
-            // Update or create the PolicyPayRollSetting
             $payrollSetting = PolicyPayRollSetting::where('policy_id', $policy->id)->first();
             if ($payrollSetting) {
                 $payrollSetting->update([
@@ -149,7 +143,6 @@ class PolicyService {
                 ]);
             }
 
-            // Update or create the PolicyWorkingSetting
             $workingSetting = PolicyWorkingSetting::where('policy_id', $policy->id)->first();
             if ($workingSetting) {
                 $workingSetting->update([
@@ -176,7 +169,6 @@ class PolicyService {
                 ]);
             }
 
-            // Update or create the working days
             $workingDays = json_decode($data['add_policy_working_array']);
             foreach ($workingDays as $workingDay) {
                 $existingWorkingDay = PolicyWorkingDay::where('policy_id', $policy->id)
@@ -200,7 +192,6 @@ class PolicyService {
                 }
             }
 
-            // Update or create the overtime settings
             $overtime = PolicyOvertime::where('policy_id', $policy->id)->first();
             if ($overtime) {
                 $overtime->update([
@@ -223,7 +214,6 @@ class PolicyService {
                 ]);
             }
 
-            // Update or create the holiday overtime settings
             $holidayOvertime = PolicyHolidayOvertime::where('policy_id', $policy->id)->first();
             if ($holidayOvertime) {
                 $holidayOvertime->update([
@@ -243,6 +233,7 @@ class PolicyService {
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::info("Error while updating policy: ".$e->getMessage());
             return false;
         }
 

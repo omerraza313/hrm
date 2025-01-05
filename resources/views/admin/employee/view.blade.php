@@ -55,7 +55,7 @@
                                             class="fa fa-pencil-o m-r-5"></i> Reactive</a>
                                 @else
                                     <a class="dropdown-item" href="#"
-                                        onclick="openEditModal('{{ route('admin.employee.update', $employee->id) }}', '{{ json_encode($employee) }}', '{{ $image }}', '{{ json_encode($employee->roles->pluck('name')) }}');"><i
+                                        onclick="openEditModal('{{ route('admin.employee.update', $employee->id) }}', '{{ json_encode($employee) }}', '{{ $image }}', '{{ json_encode($employee->roles->pluck('id')) }}');"><i
                                             class="fa fa-pencil m-r-5"></i> Edit</a>
                                     <a class="dropdown-item" href="#"
                                         onclick="openDeleteModal('{{ route('admin.employee.delete', $employee->id) }}');"><i
@@ -68,9 +68,10 @@
                         <h4 class="user-name m-t-10 mb-0 text-ellipsis">
                             <a href="{{ route('profile.view', $employee->id) }}">{{ $employee->first_name }}
                                 {{ $employee->last_name }}</a>
-                        </h4>
+                        </h4>(<span class="small text-muted">{{ $employee->getRoleNames()[0] }}</span>)
                         <div class="small text-muted">{{ $employee->employee_details->pseudo_name }}</div>
                         <div class="small text-muted">{{ $employee->employee_details->designation->name }}</div>
+                        <div class="small text-muted"></div>
                     </div>
                 </div>
             @endforeach

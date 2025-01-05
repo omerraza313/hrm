@@ -70,7 +70,8 @@ class CreateEmployeeRequest extends FormRequest {
                     return $this->input('add_role') == '1';
                 }),
             ],
-            'add_role' => 'required|in:1,2'
+            'add_report_team_lead' => 'nullable|exists:users,id',
+            'add_role' => 'required|exists:roles,id'
         ];
     }
 

@@ -1,5 +1,5 @@
-<form method="POST" action="{{ route('admin.policy.update') }}">
-    @method('POST')
+<form method="POST" action="{{ route('admin.policy.update', $policy) }}">
+    @method('PUT')
     @csrf
     <div class="row">
 
