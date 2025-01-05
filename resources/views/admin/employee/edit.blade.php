@@ -150,14 +150,30 @@
                                 <x-field-validation errorname="edit_report_manager" />
                             </div>
                         </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label class="col-form-label">Report Team Lead </label>
+                                <select class="select" name="edit_report_team_lead" id="edit_report_team_lead">
+                                    <option value="">Select Team Lead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   </option>
+                                    @if (isset($teamLeads) && $teamLeads)
+                                        @foreach ($teamLeads as $lead)
+                                            <option value="{{ $lead->id }}"
+                                                @if (old('edit_report_team_lead') == $lead->id) selected @endif>
+                                                {{ $lead->first_name }} {{ $lead->last_name }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                <x-field-validation errorname="edit_report_team_lead" />
+                            </div>
+                        </div>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="col-form-label">Role <span class="text-danger">*</span></label>
                                 <select class="select" name="edit_role" id="edit_role">
-                                    <option value="1" @if (old('edit_role') == 1) selected @endif>Employee
-                                    </option>
-                                    <option value="2" @if (old('edit_role') == 2) selected @endif>Manager
-                                    </option>
+                                    <option value="">Select Role</option>
+                                    @foreach($roles as $role)
+                                        <option value="{{$role->id}}">{{$role->name}}</option>
+                                    @endforeach
                                 </select>
                                 <x-field-validation errorname="edit_role" />
                             </div>

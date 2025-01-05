@@ -12,6 +12,7 @@ use App\Http\Requests\Employee\CreateEmployeeRequest;
 use App\Http\Requests\Employee\DeleteEmployeeRequest;
 use App\Http\Requests\Employee\UpdateEmployeeRequest;
 use App\Models\DateLog;
+use Spatie\Permission\Models\Role;
 
 class EmployeeController extends Controller {
     public function __construct(protected EmployeeService $employeeService)
@@ -28,7 +29,9 @@ class EmployeeController extends Controller {
         $designations = $this->employeeService->get_designation_list();
         $employees = $this->employeeService->get_employees($request->all());
         $managers = $this->employeeService->get_manager_list();
-        $args = compact('departments', 'designations', 'employees', 'managers');
+        $roles = Role::whereNotIn('name', ['super_admin'])->get();
+        $teamLeads = User::role('team lead')->get();
+        $args = compact('departments', 'designations', 'employees', 'managers', 'roles', 'teamLeads');
         return view('admin.employee.view', $args);
     }
 

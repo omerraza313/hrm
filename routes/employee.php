@@ -7,7 +7,7 @@ use App\Http\Controllers\Employee\AttendenceController;
 use App\Http\Controllers\Employee\EmployeeLeaveApplicationController;
 use App\Http\Controllers\Employee\LeaveApplicationController;
 
-Route::middleware(['web', 'role:employee'])->prefix('employee')->name('employee.')->group(function () {
+Route::middleware(['web'])->prefix('employee')->name('employee.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Leave Application Routes

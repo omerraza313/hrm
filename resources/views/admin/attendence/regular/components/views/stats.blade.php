@@ -15,7 +15,7 @@
                         @foreach ($employees as $employee)
                             <option value="{{ $employee->id }}"
                                 @if ($emp_id == $employee->id) @selected(true) @endif>
-                                {{ $employee->first_name }} {{ $employee->last_name }}
+                                {{ $employee->first_name }} {{ $employee->last_name }} ( {{ $employee->getRoleNames()[0] }} )
                             </option>
                         @endforeach
                     @endif

@@ -39,7 +39,7 @@ use App\Helpers\DateHelper;
                     @foreach($newAttendanceData as $key=>$data)
                     @php
                     $data = (object) $data;
-                    //dd($attendence);
+                    //dd($data);
                     //dd($attendence->user);
 
                     @endphp

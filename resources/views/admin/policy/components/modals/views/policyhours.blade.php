@@ -16,46 +16,71 @@
 
 @php
     $index = 0;
-    $arryData = old('add_policy_working_array') ? json_decode(old('add_policy_working_array')) : \App\Helpers\PolicyHelper::get_policy_hours();
+
+    // Get old input or existing policy data
+    $oldData = old('add_policy_working_array') 
+        ? collect(json_decode(old('add_policy_working_array')))
+        : null;
+
+    if(isset($policy)) {
+        $arryData = $oldData ?? collect(\App\Helpers\PolicyHelper::get_policy_hours())->map(function ($default) use ($policy) {
+            $existing = $policy->working_day->firstWhere('day', $default->id) ?? null; 
+            return (object) [
+                'id' => $default->id,
+                'day' => $default->day,
+                'start_time' => $existing->start_time ?? $default->start_time,
+                'end_time' => $existing->close_time ?? $default->end_time,
+                'active' => $existing->active ?? $default->active,
+            ];
+        });
+    }
+    else{
+        $arryData = old('add_policy_working_array') ? collect(json_decode(old('add_policy_working_array'))) : \App\Helpers\PolicyHelper::get_policy_hours();
+    }
+
 @endphp
+
 <input type="hidden" name="add_policy_working_array" id="add_policy_working_array"
-    value="{{ json_encode(\App\Helpers\PolicyHelper::get_policy_hours()) }}">
+    value="{{ old('add_policy_working_array', json_encode($arryData)) }}">
+
 @foreach ($arryData as $policy_hour)
-    <input type="hidden" id="{{ 'single_data_' . $policy_hour->id }}" value="{{ json_encode($policy_hour) }}">
+    <input type="hidden" id="{{ 'single_data_' . $policy_hour->id }}" 
+           value="{{ json_encode($policy_hour) }}">
     <div class="col-lg-4">
         <div class="form-group">
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="add_policy_working_day_{{ $policy_hour->id }}"
                     name="add_policy_working_day[]" value="{{ $policy_hour->id }}"
-                    {{ old('add_policy_working_day.' . $index) ? 'checked' : '' }}
+                    {{ old('add_policy_working_day.' . $index, $policy_hour->active) ? 'checked' : '' }}
                     onchange="workingHours('{{ json_encode($policy_hour) }}');">
                 <label class="form-check-label" for="add_policy_working_day_{{ $policy_hour->id }}">
                     {{ $policy_hour->day }}
                 </label>
-                <div class="invalid-feedback">
-                    {{-- You must agree before submitting. --}}
-                </div>
             </div>
         </div>
         <x-field-validation :errorname="'add_policy_working_day.' . $index" />
     </div>
     <div class="col-lg-4">
         <div class="form-group">
-            <input class="form-control timepicker {{ 'single_data_'.$policy_hour->id }}" type="text" placeholder="--:-- --"
-                name="add_policy_working_start_shift[]" id="{{ 'add_policy_working_start_shift_' . $policy_hour->id }}"
-                value="{{ $policy_hour->start_time }}">
+            <input class="form-control timepicker {{ 'single_data_'.$policy_hour->id }}" type="text"
+                placeholder="--:-- --" name="add_policy_working_start_shift[]"
+                id="{{ 'add_policy_working_start_shift_' . $policy_hour->id }}"
+                value="{{ old('add_policy_working_start_shift.' . $index, $policy_hour->start_time) }}">
         </div>
     </div>
     <div class="col-lg-4">
         <div class="form-group">
-            <input class="form-control timepicker {{ 'single_data_'.$policy_hour->id }}" type="text" placeholder="--:-- --"
-                name="add_policy_working_end_shift[]" id="{{ 'add_policy_working_end_shift_' . $policy_hour->id }}" value="{{ $policy_hour->end_time }}">
+            <input class="form-control timepicker {{ 'single_data_'.$policy_hour->id }}" type="text"
+                placeholder="--:-- --" name="add_policy_working_end_shift[]"
+                id="{{ 'add_policy_working_end_shift_' . $policy_hour->id }}"
+                value="{{ old('add_policy_working_end_shift.' . $index, $policy_hour->end_time) }}">
         </div>
     </div>
     @php
         $index++;
     @endphp
 @endforeach
+
 
 <div class="col-lg-12">
     <x-field-validation :errorname="'add_policy_working_day'" />

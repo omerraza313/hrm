@@ -86,10 +86,9 @@ class PolicyController extends Controller {
     public function update(UpdatePolicyRequest $request, Policy $policy)
     {
         $data = $request->validated();
-
         $storeStatus = $this->policyService->update($data, $policy->id);
         if ($storeStatus) {
-            return redirect()->back()->with('success', "Policy add successfully!");
+            return redirect()->back()->with('success', "Policy Updated successfully!");
         }
         return redirect()->back()->with('error', "Some Error Occured!");
     }

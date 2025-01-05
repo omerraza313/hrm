@@ -55,7 +55,8 @@ class UpdateEmployeeRequest extends FormRequest {
                     return $this->input('edit_role') == 1;
                 })
             ],
-            'edit_role' => 'required|in:1,2'
+            'edit_report_team_lead' => 'nullable|exists:users,id',
+            'edit_role' => 'required|exists:roles,id'
         ];
     }
 
