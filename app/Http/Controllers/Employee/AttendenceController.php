@@ -36,7 +36,6 @@ class AttendenceController extends Controller {
     // }
     public function index(Request $request)
     {
-
         if(!in_array(Auth::user()->getRoleNames()[0], ['manager', 'team lead'])){
 
             $currentMonth = Carbon::now()->month;
@@ -66,7 +65,7 @@ class AttendenceController extends Controller {
             $employeeIds = array_merge($employeeIds, $teamLeads);
 
         } else if(Auth::user()->hasRole('team lead')) {
-            $employeeIds = Auth::user()->employees->pluck('id')->toArray();
+            $employeeIds = Auth::user()->employees->pluck('user_id')->toArray();
         }
         $employees = User::whereIn('id', $employeeIds)->get();
         $employee_id = $request->employee_id ?? null;

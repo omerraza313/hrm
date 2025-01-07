@@ -253,7 +253,6 @@ class EmployeeService {
             
             $role = Role::find($data['edit_role']);
             $employee->syncRoles([$role]);
-            dd($employee->getRoleNames());
             $employee->update([ 
                 'first_name' => $data['edit_first_name'],
                 'last_name' => $data['edit_last_name'],
