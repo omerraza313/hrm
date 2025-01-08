@@ -39,7 +39,7 @@ use App\Helpers\DateHelper;
                     <tr>
                         <td>{{++$key}}</td>
                         <td>{{$user->full_name ?? 'NA'}}</td>
-                        <td>{{$data->date}}</td>
+                        <td>{{Carbon\Carbon::parse($data->date)->format('m-d-y')}}</td>
                         <td>
                             <div class="progress progress-xs">
                                 <div class="progress-bar progress-bar-striped bg-primary" role="progressbar"
@@ -137,7 +137,7 @@ use App\Helpers\DateHelper;
                                 <td>${log.checkout}</td>
                                 <td>${log.time_spent}</td>
                                 <td>${log.device_id}</td>
-                                <td><!-- Optional: Add remarks here --></td>
+                                <td>${log.remarks}</td>
                             </tr>
                         `;
                 });

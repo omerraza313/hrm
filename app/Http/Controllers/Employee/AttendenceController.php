@@ -238,6 +238,7 @@ class AttendenceController extends Controller {
                         'arrivalDate' => $arrivalDate,
                         'checkin' => $checkinTime,
                         'checkout' => $checkoutTime,
+                        'remarks' => $currentLog->remarks,
                         'time_spent' => "{$timeSpent} Min"
                     ];
                 }
