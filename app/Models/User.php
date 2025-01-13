@@ -71,6 +71,11 @@ class User extends Authenticatable {
         return $this->hasMany(UserDetail::class, 'team_lead_id', 'id');
     }
 
+    public function getEmployeesByManager()
+    {
+        return $this->hasMany(UserDetail::class, 'manager_id', 'id');
+    }
+
     public function emergency_contacts()
     {
         return $this->hasOne(FamilyContact::class)->where('ice_status', 1);

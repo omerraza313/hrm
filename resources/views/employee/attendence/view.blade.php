@@ -17,9 +17,7 @@
         </div>
     </div>
     <!-- /Page Header -->
-    @if(Auth::user()->hasRole(['manager', 'team lead']))
-        @include('admin.attendence.regular.components.views.stats')
-    @endif
+
     <div class="row">
         {{--@include('employee.attendence.components.views.stats')--}}
 
