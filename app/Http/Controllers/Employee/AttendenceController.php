@@ -36,76 +36,116 @@ class AttendenceController extends Controller {
     // }
     public function index(Request $request)
     {
-        if(!in_array(Auth::user()->getRoleNames()[0], ['manager', 'team lead'])){
+        $currentMonth = Carbon::now()->month;
+        $employee = Auth::user();
+        if ($request->has('filterMonth')) {
+            $currentMonth = $request->input('filterMonth');
+        }
 
-            $currentMonth = Carbon::now()->month;
-            $employee = Auth::user();
-            if ($request->has('filterMonth')) {
-                $currentMonth = $request->input('filterMonth');
-            }
-    
-            $currentYear = Carbon::now()->year;
-    
-            $uniqueDates = DeviceLog::where('user_id', $employee->id)
-                ->whereMonth('date', $currentMonth)
-                ->whereYear('date', $currentYear)
-                ->selectRaw('date')
-                ->groupBy('date')
-                ->orderBy('date', 'desc')
+        $currentYear = Carbon::now()->year;
+
+        // Step 1: Fetch unique dates from device_log for the specified user and month
+        $uniqueDates = DeviceLog::where('user_id', Auth::id())
+            ->whereMonth('date', $currentMonth)
+            ->whereYear('date', $currentYear)
+            ->selectRaw('date')
+            ->groupBy('date')
+            ->orderBy('date', 'desc')
+            ->get();
+
+        // Step 2: Fetch all logs for each unique date
+        $newAttendanceData = $uniqueDates->map(function ($logDate) use ($employee) {
+            $logsForDate = DeviceLog::where('user_id', Auth::id())
+                ->whereDate('date', $logDate->date)
+                ->orderBy('time')
                 ->get();
-            
-            $newAttendanceData = $this->prepareAttendanceData($uniqueDates, $employee);
 
-            return view('employee.attendence.view', compact('newAttendanceData'));
-        }
+            if ($logsForDate->isNotEmpty()) {
+                // Calculate earned time based on first and last log of the day
+                $firstLogTime = Carbon::parse($logsForDate->first()->time);
+                $lastLogTime = Carbon::parse($logsForDate->last()->time);
 
-        if(Auth::user()->hasRole('manager')){
-            $teamLeads = Auth::user()->team_leads->pluck('id')->toArray();            
-            $employeeIds = UserDetail::whereIn('team_lead_id', $teamLeads)->pluck('user_id')->toArray();
-            $employeeIds = array_merge($employeeIds, $teamLeads);
+                $effectiveHours = $firstLogTime->diff($lastLogTime);
+                $earnedHoursFormatted = sprintf('%02d:%02d:%02d', $effectiveHours->h, $effectiveHours->i, $effectiveHours->s);
+                $checkinTime = null;
+                $totalMinutes = null;
 
-        } else if(Auth::user()->hasRole('team lead')) {
-            $employeeIds = Auth::user()->employees->pluck('user_id')->toArray();
-        }
-        $employees = User::whereIn('id', $employeeIds)->get();
-        $employee_id = $request->employee_id ?? null;
-        $from_date = $request->from_date ?? null;
-        $to_date = $request->to_date ?? null;
+                // Find the first "CheckIn" entry for check-in time
+                foreach ($logsForDate as $log) {
+                    if ($log->type === 'CheckIn') {
+                        $checkinTime = Carbon::parse($log->time)->format('h:i A'); // 12-hour format without seconds
+                        $firsCheckIn = $checkinTime; // 12-hour format without seconds
+                        break;
+                    }
+                }
 
-        $uniqueDatesQuery = DeviceLog::query();
-        
-        if($employee_id) {
-            $employee = User::where('id', $employee_id)->with(['policy.working_settings'])->first();
-            $uniqueDatesQuery->where('user_id', $employee->id);
-        }
+                // Calculate effective time spent across all CheckIn and CheckOut pairs
+                for ($i = 0; $i < $logsForDate->count(); $i++) {
+                    $currentLog = $logsForDate[$i];
 
-        if($from_date) {
-            $carbonDate = Carbon::createFromFormat('m/d/Y', $from_date);
-            $formattedDate = $carbonDate->format('Y-m-d');
-            $uniqueDatesQuery->where('date' , '>=', $formattedDate);
-        }
+                    if ($currentLog->type === 'CheckIn') {
+                        $checkInTime = Carbon::parse($currentLog->time);
 
-        if($to_date) {
-            $carbonDate = Carbon::createFromFormat('m/d/Y', $to_date);
-            $formattedDate = $carbonDate->format('Y-m-d');
-            $uniqueDatesQuery->where('date', '<=', $formattedDate);
-        }
-        
-        $uniqueDates = $uniqueDatesQuery
-        ->selectRaw('date')
-        ->groupBy('date')
-        ->orderBy('date', 'desc')->get();
+                        // Look for the next CheckOut log after this CheckIn
+                        for ($j = $i + 1; $j < $logsForDate->count(); $j++) {
+                            if ($logsForDate[$j]->type === 'CheckOut') {
+                                $checkOutTime = Carbon::parse($logsForDate[$j]->time);
+                                $minutesSpent = $checkInTime->diffInMinutes($checkOutTime);
 
-        if(!$employee_id) {
-            return view('employee.attendence.view', ['newAttendanceData' => [], 'employees' => $employees]);
-        }
+                                $totalMinutes += $minutesSpent;
 
-        $newAttendanceData = $this->prepareAttendanceData($uniqueDates, $employee);
+                                // Move index to the position of this CheckOut to continue
+                                $i = $j;
+                                break;
+                            }
+                        }
+                    }
+                }
+                $policy = $employee->policy[0];
+                
+                $earnedHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
+                $shift_start = Carbon::parse($policy->working_settings->shift_start);
+                $calculatedLeniency = $shift_start->addMinutes($policy->working_settings->late_c_l_t);
+                $shift_close = $policy->working_settings->shift_close;
+                
+                $firstCheckIn = Carbon::parse($firsCheckIn);
+                if($firstCheckIn->lt($calculatedLeniency)){
+                    $status = 1;
+                } else {
+                    $status = 0;
+                }
+                $gross_time = DateHelper::differenceHoursMinutes2($policy->working_settings->shift_start, $shift_close);                    
 
-        return view('employee.attendence.view', ['newAttendanceData' => $newAttendanceData, 'employees' => $employees]);
+                $earned_seconds = DateHelper::convert_time_to_seconds($earnedHours);
+                $gross_seconds = DateHelper::convert_time_to_seconds($gross_time);
+                $attendence_visual = (int)(($earned_seconds*100) / $gross_seconds );
 
+
+                return [
+                    'user_id' => $employee->id,
+                    'checkin_time' => $checkinTime,
+                    'effective_time' => $earnedHoursFormatted,
+                    'earned_time' => $earnedHours,
+                    'gross_time' => $gross_time,
+                    'date' => $logDate->date,
+                    'status' => $status,
+                    'attendence_visual' => $attendence_visual,
+                    'shift_start' => $policy->working_settings->shift_start,
+                    'leniency' => $policy->working_settings->late_c_l_t
+                ];
+            } else {
+                return [
+                    'date' => $logDate->date,
+                    'checkin_time' => null,
+                    'earned_time' => '00:00:00',
+                    'effective_time' => '00:00:00',
+                ];
+            }
+        });
+
+        return view('employee.attendence.view', compact('newAttendanceData'));
     }
-
+    
     public function prepareAttendanceData($uniqueDates, $employee)
     {
         return $uniqueDates->map(function ($logDate) use ($employee) {
@@ -255,9 +295,59 @@ class AttendenceController extends Controller {
     }
     // late commers service
 
-    public function attendence_view(Request $request){
-        $data = $this->attendenceService->getAttendenceDataManager($request->all());
-        return view('employee.manager.attendence.regular.view', $data);
+    // public function attendence_view(Request $request){
+    //     $data = $this->attendenceService->getAttendenceDataManager($request->all());
+    //     return view('employee.manager.attendence.regular.view', $data);
+    // }
+
+    public function attendence_view(Request $request)
+    {
+        if(Auth::user()->hasRole('manager')){
+            $teamLeads = Auth::user()->team_leads->pluck('user_id')->toArray();
+            $employeeIds = UserDetail::whereIn('team_lead_id', $teamLeads)->pluck('user_id')->toArray();
+            $employeeIds = array_merge($employeeIds, $teamLeads);
+
+        } else if(Auth::user()->hasRole('team lead')) {
+            $employeeIds = Auth::user()->employees->pluck('user_id')->toArray();
+        }
+
+        $employees = User::whereIn('id', $employeeIds)->get();
+        $employee_id = $request->employee_id ?? null;
+        $from_date = $request->from_date ?? null;
+        $to_date = $request->to_date ?? null;
+
+        $uniqueDatesQuery = DeviceLog::query();
+        
+        if($employee_id) {
+            $employee = User::where('id', $employee_id)->with(['policy.working_settings'])->first();
+            $uniqueDatesQuery->where('user_id', $employee->id);
+        }
+
+        if($from_date) {
+            $carbonDate = Carbon::createFromFormat('m/d/Y', $from_date);
+            $formattedDate = $carbonDate->format('Y-m-d');
+            $uniqueDatesQuery->where('date' , '>=', $formattedDate);
+        }
+
+        if($to_date) {
+            $carbonDate = Carbon::createFromFormat('m/d/Y', $to_date);
+            $formattedDate = $carbonDate->format('Y-m-d');
+            $uniqueDatesQuery->where('date', '<=', $formattedDate);
+        }
+        
+        $uniqueDates = $uniqueDatesQuery
+        ->selectRaw('date')
+        ->groupBy('date')
+        ->orderBy('date', 'desc')->get();
+
+        if(!$employee_id) {
+            return view('employee.manager.attendence.regular.view', ['newAttendanceData' => [], 'employees' => $employees]);
+        }
+
+        $newAttendanceData = $this->prepareAttendanceData($uniqueDates, $employee);
+
+        return view('employee.manager.attendence.regular.view', ['newAttendanceData' => $newAttendanceData, 'employees' => $employees]);
+
     }
 
     public function late_commers(Request $request){

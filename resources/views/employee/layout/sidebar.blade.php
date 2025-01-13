@@ -49,7 +49,7 @@ $route = request()->route();
                 <li class="{{ Route::is('employee.attendence.view') ? 'active' : '' }}">
                     <a href="{{ route('employee.attendence.view') }}"><i class="la la-table"></i><span>Attendence</span></a></li>
                 </li>
-                @if (auth()->user()->hasRole(\App\Enums\RolesEnum::Manager->value))
+                @if (auth()->user()->hasRole(['manager', 'team lead']))
                     <li class="submenu">
                         <a href="#" class="{{($route->uri()=="employee/manager_view"? "active":"")}}"><i class="la la-user"></i> <span> Employee Attendence</span> <span
                         class="menu-arrow"></span></a>

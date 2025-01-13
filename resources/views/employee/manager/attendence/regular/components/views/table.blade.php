@@ -5,129 +5,87 @@
         class="btn btn-primary">Export Attendance</a>
 </div>
 <div class="table-responsive">
-    <table class="table table-striped custom-table mb-0">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Date </th>
-                <th>Employee</th>
-                <th>Designation</th>
-                <th>Attendence Visual</th>
-                <th>Effective Hrs</th>
-                <th><center>Gross Hrs</center></th>
-                <th><center>Arrival</center></th>
-                <th><center>Log</center></th>
-{{--                <th>Action</th>--}}
-            </tr>
-        </thead>
-        <tbody>
-            {{-- @dd($newAttendence) --}}
-            @foreach ($newAttendence as $key => $userAttendance)
-                @foreach ($userAttendance as $attendence)
+            <table class="table table-striped custom-table mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>User </th>
+                        <th>Date </th>
+                        <th>Attendence visual</th>
+                        <th>Shift Start</th>
+                        <th>Leniency</th>
+                        <th>Arrival</th>
+                        <th>Earned Hrs</th>
+                        <th>Effective Hrs</th>
+                        <th>Gross Hrs</th>
+                        <th>Status</th>
+                        <th>Log</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($newAttendanceData as $key=>$data)
                     @php
-                        $attendence = (object) $attendence;
-                        // // dd(gettype($attendence));
-                        // try {
-                        //     $attendence->a_date;
-                        // } catch (\Throwable $th) {
-                        //     // Convert stdClass to associative array
-                        //     $arrayData = json_decode(json_encode($attendence), true);
-
-                        //     // Convert associative array to object
-                        //     $attendence = (object) $arrayData;
-                        // dd($attendence);
-                        // }
+                    $data = (object) $data;
+                    //dd($attendence);
+                    //dd($attendence->user);
+                    $user = App\Models\User::find($data->user_id);
                     @endphp
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
-                        <td>{{ $attendence->a_date }}</td>
-                        <td>{{ $attendence->user->first_name }} {{ $attendence->user->last_name }}</td>
-                        <td>{{ $attendence->user->employee_details->designation->name }}</td>
+                        <td>{{++$key}}</td>
+                        <td>{{$user->full_name ?? 'NA'}}</td>
+                        <td>{{Carbon\Carbon::parse($data->date)->format('m-d-y')}}</td>
                         <td>
                             <div class="progress progress-xs">
                                 <div class="progress-bar progress-bar-striped bg-primary" role="progressbar"
-                                    style="width: {{ $attendence->attendence_visual }}%"
-                                    aria-valuenow="{{ $attendence->attendence_visual }}" aria-valuemin="0"
-                                    aria-valuemax="100">
+                                     style="width: {{ $data->attendence_visual }}%"
+                                     aria-valuenow="{{ $data->attendence_visual }}" aria-valuemin="0"
+                                     aria-valuemax="100">
                                 </div>
                             </div>
                         </td>
+                        <td>{{$data->shift_start}}</td>
+                        <td>{{$data->leniency}}</td>
                         <td>
-                            <h6>{{ $attendence->effective_hrs_in_hours }} Hrs
-                                {{ $attendence->effective_hrs_in_minus }} mins
-                            </h6>
+                            @if($data->checkin_time)
+                            {{ \Carbon\Carbon::parse($data->checkin_time)->format('h:i A') }}
+                            @else
+                            --:--:--
+                            @endif
                         </td>
+                        <td>{{$data->earned_time}}</td>
+                        <td>{{$data->effective_time}}</td>
+                        <td>{{$data->gross_time}}</td>
                         <td>
-                            <center>
-                                <h6>{{ $attendence->Gross_Hrs }}</h6>
-                            </center>
-                        </td>
-                        <td>
-                            <center>
-                                @if ($attendence->status == \App\Enums\AttendenceEnum::OnTime->value)
-                                    <span class="bg-success text-white" style="padding: 8px 8px; border-radius: 100%;"><i
-                                            class="fa fa-check"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
-                                @elseif ($attendence->status == \App\Enums\AttendenceEnum::Late->value)
-                                    <span class="bg-primary text-white" style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Leave->value)
-                                    <span class="bg-info text-white" style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Holiday->value)
-                                    <span class="bg-warning text-white" style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
-                                @elseif($attendence->status == \App\Enums\AttendenceEnum::Absent->value)
-                                    <span class="bg-danger text-white" style="padding: 8px 13px; border-radius: 100%;"><i
-                                            class="fa fa-exclamation"></i></span>
-                                    {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($attendence->status) }}
-                                @endif
-                            </center>
-                        </td>
-                        <td>
-                            <center>
-                                @if (
-                                    $attendence->status == \App\Enums\AttendenceEnum::OnTime->value ||
-                                        $attendence->status == \App\Enums\AttendenceEnum::Late->value)
-                                    <button class="btn btn-primary"
-                                            onclick="openLogModal('{{ json_encode($attendence) }}')">View</button>
-                                @endif
-                            </center>
-
-                        </td>
-                        {{-- <td>
-                            @if ($attendence->status == \App\Enums\AttendenceEnum::OnTime->value)
+                            @if ($data->status == \App\Enums\AttendenceEnum::OnTime->value)
                                 <span class="bg-success text-white" style="padding: 8px 8px; border-radius: 100%;"><i
                                         class="fa fa-check"></i></span>
-                            @elseif($attendence->status == \App\Enums\AttendenceEnum::Late->value)
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
+                            @elseif ($data->status == \App\Enums\AttendenceEnum::Late->value)
                                 <span class="bg-primary text-white" style="padding: 8px 13px; border-radius: 100%;"><i
                                         class="fa fa-exclamation"></i></span>
-                            @elseif($attendence->status == \App\Enums\AttendenceEnum::Leave->value)
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
+                            @elseif($data->status == \App\Enums\AttendenceEnum::Leave->value)
                                 <span class="bg-info text-white" style="padding: 8px 13px; border-radius: 100%;"><i
                                         class="fa fa-exclamation"></i></span>
-                            @elseif($attendence->status == \App\Enums\AttendenceEnum::Holiday->value)
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
+                            @elseif($data->status == \App\Enums\AttendenceEnum::Holiday->value)
                                 <span class="bg-warning text-white" style="padding: 8px 13px; border-radius: 100%;"><i
                                         class="fa fa-exclamation"></i></span>
-                            @elseif($attendence->status == \App\Enums\AttendenceEnum::Absent->value)
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
+                            @elseif($data->status == \App\Enums\AttendenceEnum::Absent->value)
                                 <span class="bg-danger text-white" style="padding: 8px 13px; border-radius: 100%;"><i
                                         class="fa fa-exclamation"></i></span>
+                                {{ \App\Helpers\AttendenceHelper::getattendenceStatusName($data->status) }}
                             @endif
-                        </td> --}}
-                        {{--<td>
-                            --}}{{-- @dd($attendence) --}}{{--
-                            --}}{{-- <button class="btn btn-primary btn-sm"
-                                onclick="editModal('{{ json_encode($attendence) }}');">Edit</button> --}}{{--
-                            <button class="btn btn-primary btn-sm"
-                                onclick="editModal('{{ json_encode($attendence) }}');">Edit</button>
-                        </td>--}}
+                        </td>
+                        <td>
+                            <button class="btn btn-primary" onclick="fetchDeviceLogs('{{ $data->date }}', {{ $data->user_id }})">View</button>
+                        </td>
                     </tr>
-                @endforeach
-            @endforeach
-        </tbody>
-    </table>
+                    @endforeach
+
+                </tbody>
+            </table>
 </div>
 
 @include('employee.manager.attendence.regular.components.modals.editmodal2')
@@ -135,92 +93,219 @@
 @push('modal-script')
     <script src="{{ asset('assets/js/attendence/main.js') }}"></script>
     <script>
-        function editModal(data) {
-            let mainData = JSON.parse(data);
+    function getAttendenceLog() {
+        let value = document.getElementById('attendence_log_month').value;
+        window.location.href = "{{ route('employee.attendence.view') }}" + "?filterMonth=" + value;
+    }
 
-            let modalView = modalViewfunc(mainData);
+    function fetchDeviceLogs(arrivalDate, userId) {
+        $.ajax({
+            url: '{{ route('employee.fetch.device_log') }}', // Correctly namespaced route
+            method: 'GET',
+            data: {
+                arrival_date: arrivalDate,
+                user_id: userId
+            },
+            success: function(response) {
+                $('#view_log_modal').modal('show'); // Show the modal
 
-            $('#editmodaldata').html(modalView);
-            $("#edit_attendence").modal('show');
-            $('.timepicker').datetimepicker({
-                format: 'hh:mm A', // Display only hours and minutes
-                // stepping: 1
-            });
-        }
+                let mainString = `
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Earned Time</th>
+                                    <th>Floor</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
 
-        function openLogModal(attendence) {
-            $('#view_log_modal').modal('show');
+                // Loop through the response data to create table rows
+                response.forEach(log => {
+                    mainString += `
+                            <tr>
+                                <td>${log.checkin}</td>
+                                <td>${log.checkout}</td>
+                                <td>${log.time_spent}</td>
+                                <td>${log.device_id}</td>
+                                <td>${log.remarks}</td>
+                            </tr>
+                        `;
+                });
 
-            let mainString = `
+                mainString += `
+                            </tbody>
+                        </table>
+                    `;
+
+                // Set the generated HTML into the modal content
+                $('#view_modal_data').html(mainString);
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    function openLogModal(attendence) {
+        $('#view_log_modal').modal('show');
+
+        let mainString = `
             <table class="table">
                 <thead>
                     <tr>
                         <th>Check In</th>
                         <th>Check Out</th>
+                        <th>Earned Time</th>
+                        <th>Floor</th>
+                        <th>Remarks</th>
                     </tr>
                 </thead>
                 <tbody>
             `;
 
-            let subString = ``;
-            attendence = JSON.parse(attendence);
-            console.log(attendence);
-            for (let index = 0; index < attendence['logs'].length; index++) {
-                const element = attendence['logs'][index];
-                console.log(element);
+        let subString = ``;
+        attendence = JSON.parse(attendence);
+        console.log(attendence);
+        let totalFormattedTime = calculateTotalTimeDifference(attendence['logs']);
+        let effective_time = calculateEffectiveTime(attendence['logs']);
 
-                var utcDateCheckIn = new Date(element['arrival_time']);
-                let newyorkCheckIn = new Intl.DateTimeFormat('en-US', {
-                    timeZone: 'America/New_York',
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                }).format(utcDateCheckIn);
+        for (let index = 0; index < attendence['logs'].length; index++) {
+            const element = attendence['logs'][index];
+            let checkin = formatLogDate(element['arrival_time']);
+            let checkout = formatLogDate(element['leave_time']);
 
-                var utcDateCheckOut = new Date(element['leave_time']);
-                let newyorkCheckOut = new Intl.DateTimeFormat('en-US', {
-                    timeZone: 'America/New_York',
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                }).format(utcDateCheckOut);
+            let remarks = element['remarks'] ?? '';
+            let device_id = element['device_id'] ?? '';
+            let time_diff = calculateTimeDifference(checkin, checkout);
 
-                let checkin = formatLogDate(newyorkCheckIn);
-                let checkout = formatLogDate(newyorkCheckOut);
-                subString += `
+            subString += `
                 <tr>
                     <td>${checkin}</td>
                     <td>${checkout}</td>
+                    <td>${time_diff}</td>
+                    <td>${device_id}</td>
+                    <td>${remarks}</td>
                 </tr>
                 `;
+        }
+        mainString += `${subString}
+            <tr>
+                <td colspan="2"><strong>Earned Time</strong></td>
+
+                <td colspan="3">${totalFormattedTime}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>Effective Time</strong></td>
+                <td colspan="3">${effective_time}</td>
+            </tr>
+            </tbody></table>`;
+
+        $('#view_modal_data').html(mainString);
+    }
+
+    function calculateEffectiveTime(logs) {
+        if (logs.length === 0) {
+            return "00:00:00"; // Return if there are no logs
+        }
+
+        let earliestArrival = new Date(logs[0]['arrival_time']);
+        let latestLeave = new Date(logs[0]['leave_time']);
+
+        for (let index = 1; index < logs.length; index++) {
+            const element = logs[index];
+
+            let checkin = new Date(element['arrival_time']);
+            let checkout = new Date(element['leave_time']);
+
+            // Update the earliest arrival time
+            if (checkin < earliestArrival) {
+                earliestArrival = checkin;
             }
-            mainString += `${subString}</tbody></table>`;
 
-            $('#view_modal_data').html(mainString);
+            // Update the latest leave time
+            if (checkout > latestLeave) {
+                latestLeave = checkout;
+            }
         }
 
+        // Calculate the total difference in milliseconds
+        const totalTimeDifference = Math.abs(latestLeave - earliestArrival);
 
-        function formatLogDate(datetime) {
+        return formatMilliseconds(totalTimeDifference);
+    }
 
-            // Parse the timestamp into a Date object
-            let date = new Date(datetime);
+    function formatMilliseconds(ms) {
+        let totalSeconds = Math.floor(ms / 1000);
+        let totalMinutes = Math.floor(totalSeconds / 60);
+        let totalHours = Math.floor(totalMinutes / 60);
 
-            // Format the date
-            let formattedDate = date.toLocaleString('en-US', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true // Use 12-hour clock format
-            });
-            return formattedDate;
+        let seconds = totalSeconds % 60;
+        let minutes = totalMinutes % 60;
+        let hours = totalHours;
+
+        // Ensure two digits for hours, minutes, and seconds
+        let formattedHours = String(hours).padStart(2, '0');
+        let formattedMinutes = String(minutes).padStart(2, '0');
+        let formattedSeconds = String(seconds).padStart(2, '0');
+
+        // Construct the formatted time string
+        let formattedTime = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+
+        return formattedTime;
+    }
+
+    function calculateTotalTimeDifference(logs) {
+        let totalTimeDifference = 0;
+
+        for (let index = 0; index < logs.length; index++) {
+            const element = logs[index];
+
+            let checkin = new Date(element['arrival_time']);
+            let checkout = new Date(element['leave_time']);
+
+            // Calculate the difference in milliseconds and add it to the total
+            totalTimeDifference += Math.abs(checkout - checkin);
         }
-    </script>
+        return formatMilliseconds(totalTimeDifference);
+    }
+
+    function calculateTimeDifference(datetime1, datetime2) {
+        // Parse the timestamps into Date objects
+        let date1 = new Date(datetime1);
+        let date2 = new Date(datetime2);
+
+        // Calculate the difference in milliseconds
+        let timeDifference = Math.abs(date2 - date1);
+
+        return formatMilliseconds(timeDifference)
+
+        // return formattedDifference || '00:00:00';
+    }
+
+    function formatLogDate(datetime) {
+        // Parse the timestamp into a Date object
+        let date = new Date(datetime);
+
+        // Add 4 hours (4 hours * 60 minutes * 60 seconds * 1000 milliseconds)
+        date.setTime(date.getTime() + 4 * 60 * 60 * 1000);
+
+        // Format the date with seconds, 24-hour format, and timezone
+        let formattedDate = date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit', // Include seconds
+            hour12: false, // Use 24-hour clock format
+            //timeZoneName: 'short' // Include timezone abbreviation
+        });
+
+        return formattedDate;
+    }
+</script>
 @endpush
