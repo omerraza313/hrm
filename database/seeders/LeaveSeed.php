@@ -14,9 +14,9 @@ class LeaveSeed extends Seeder
      */
     public function run(): void
     {
-        LeaveType::create(['leave_type' => 'paid']);
-        LeaveType::create(['leave_type' => 'unpaid']);
-        Unit::create(['name' => 'days']);
-        Unit::create(['name' => 'hours']);
+        LeaveType::updateOrCreate(['leave_type' => 'paid'],[]);
+        LeaveType::updateOrCreate(['leave_type' => 'unpaid'],[]);
+        Unit::updateOrCreate(['name' => 'days'],[]);
+        Unit::updateOrCreate(['name' => 'hours'],[]);
     }
 }

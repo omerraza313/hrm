@@ -278,7 +278,7 @@ class EmployeeService {
                 'designation_id' => $data['edit_designation'],
                 'salary' => $data['edit_salary'],
                 'blood_group' => $data['edit_blood_group'],
-                'manager_id' => $data['edit_report_manager'],
+                'manager_id' => $data['edit_report_manager'] ?? null,
                 'team_lead_id' => $data['edit_report_team_lead'] ?? null
             ]);
 
