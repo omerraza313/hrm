@@ -1,3 +1,7 @@
+<?php
+
+use Carbon\Carbon;
+?>
 <div class="profile-view">
     <div class="profile-img-wrap">
         <div class="profile-img">
@@ -14,7 +18,11 @@
                     <h6 class="text-muted">{{ $employee->employee_details->department->name }}</h6>
                     <small class="text-muted">{{ $employee->employee_details->designation->name }}</small>
                     <div class="staff-id">Employee ID : {{ $employee->id }}</div>
-                    <div class="small doj text-muted">Date of Join : {{ $employee->employee_details->join_date }}</div>
+                    <div class="small doj text-muted">Date of Join : 
+                    <!-- {{ $employee->employee_details->join_date }} -->
+                    <!-- {{ \App\Helpers\DateHelper::dateFormat('m/d/Y',$employee->employee_details->join_date) }} -->
+                    {{ $employee->employee_details->join_date}}
+                </div>
                     <div class="staff-msg"></div>
                 </div>
             </div>
@@ -31,7 +39,8 @@
                     <li>
                         <div class="title">Birthday :</div>
                         <div class="text">
-                            {{ $employee->employee_details->dob }}
+                            <!-- {{ $employee->employee_details->dob }} -->
+                            {{ Carbon::createFromFormat('d/m/Y', $employee->employee_details->dob)->format('m/d/Y');}}
                         </div>
                         {{-- <div class="text">
                             {{ \App\Helpers\DateHelper::globaldateFormat('j M Y', $employee->employee_details->dob) }}

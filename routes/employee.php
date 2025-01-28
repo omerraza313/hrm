@@ -25,7 +25,7 @@ Route::middleware(['web'])->prefix('employee')->name('employee.')->group(functio
     Route::post('/attendence/mark/leave/{id?}', [AttendenceController::class, 'mark_leave_attendance'])->name('attendence.mark.leave')->middleware('can:attendances.index');
 
     Route::get('fetch_device_log', [AttendenceController::class, 'fetch_device_log'])->name('fetch.device_log');
-    
+
     // Manager
     Route::get('/attendence/manager_view', [AttendenceController::class, 'attendence_view'])->name('employee.manager.attendence.regular.view')->middleware('can:attendances.index');
     Route::get('/attendence/late_view', [AttendenceController::class, 'late_commers'])->name('employee.manager_view')->middleware('can:attendances.index');

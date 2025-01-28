@@ -20,6 +20,7 @@ use App\Helpers\DateHelper;
                         <th>Attendence visual</th>
                         <th>Shift Start</th>
                         <th>Leniency</th>
+                        <th>Late Hours</th>
                         <th>Arrival</th>
                         <th>Earned Hrs</th>
                         <th>Effective Hrs</th>
@@ -39,7 +40,7 @@ use App\Helpers\DateHelper;
                     <tr>
                         <td>{{++$key}}</td>
                         <td>{{$user->full_name ?? 'NA'}}</td>
-                        <td>{{Carbon\Carbon::parse($data->date)->format('m-d-y')}}</td>
+                        <td>{{Carbon\Carbon::parse($data->date)->format('m/d/y')}}</td>
                         <td>
                             <div class="progress progress-xs">
                                 <div class="progress-bar progress-bar-striped bg-primary" role="progressbar"
@@ -51,9 +52,10 @@ use App\Helpers\DateHelper;
                         </td>
                         <td>{{$data->shift_start}}</td>
                         <td>{{$data->leniency}}</td>
+                        <td>{{$data->lateFormattedTime}}</td>
                         <td>
                             @if($data->checkin_time)
-                            {{ \Carbon\Carbon::parse($data->checkin_time)->format('h:i A') }}
+                            {{ \Carbon\Carbon::parse($data->checkin_time)->format('h:i:s A') }}
                             @else
                             --:--:--
                             @endif
@@ -105,213 +107,154 @@ use App\Helpers\DateHelper;
     }
 
     function fetchDeviceLogs(arrivalDate, userId) {
-        $.ajax({
-            url: '{{ route('fetch.device_log') }}', // Correctly namespaced route
-            method: 'GET',
-            data: {
-                arrival_date: arrivalDate,
-                user_id: userId
-            },
-            success: function(response) {
-                $('#view_log_modal').modal('show'); // Show the modal
+    $.ajax({
+        url: '{{ route('fetch.device_log') }}', // Correctly namespaced route
+        method: 'GET',
+        data: {
+            arrival_date: arrivalDate,
+            user_id: userId
+        },
+        success: function(response) {
+            $('#view_log_modal').modal('show'); // Show the modal
 
-                let mainString = `
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Check In</th>
-                                    <th>Check Out</th>
-                                    <th>Earned Time</th>
-                                    <th>Floor</th>
-                                    <th>Remarks</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    `;
+            let totalFormattedTime = calculateEarnedTime(response);
+            let effective_time = calculateEffectiveTime(response, arrivalDate);
+            let formattedDate = formatDate(arrivalDate);
 
-                // Loop through the response data to create table rows
-                response.forEach(log => {
-                    mainString += `
-                            <tr>
-                                <td>${log.checkin}</td>
-                                <td>${log.checkout}</td>
-                                <td>${log.time_spent}</td>
-                                <td>${log.device_id}</td>
-                                <td>${log.remarks}</td>
-                            </tr>
-                        `;
-                });
-
-                mainString += `
-                            </tbody>
-                        </table>
-                    `;
-
-                // Set the generated HTML into the modal content
-                $('#view_modal_data').html(mainString);
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
-
-    function openLogModal(attendence) {
-        $('#view_log_modal').modal('show');
-
-        let mainString = `
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Check In</th>
-                        <th>Check Out</th>
-                        <th>Earned Time</th>
-                        <th>Floor</th>
-                        <th>Remarks</th>
-                    </tr>
-                </thead>
-                <tbody>
+            let mainString = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                        
+                            <th>Date</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Earned Time</th>
+                            <th>Floor</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
             `;
 
-        let subString = ``;
-        attendence = JSON.parse(attendence);
-        console.log(attendence);
-        let totalFormattedTime = calculateTotalTimeDifference(attendence['logs']);
-        let effective_time = calculateEffectiveTime(attendence['logs']);
-
-        for (let index = 0; index < attendence['logs'].length; index++) {
-            const element = attendence['logs'][index];
-            let checkin = formatLogDate(element['arrival_time']);
-            let checkout = formatLogDate(element['leave_time']);
-
-            let remarks = element['remarks'] ?? '';
-            let device_id = element['device_id'] ?? '';
-            let time_diff = calculateTimeDifference(checkin, checkout);
-
-            subString += `
-                <tr>
-                    <td>${checkin}</td>
-                    <td>${checkout}</td>
-                    <td>${time_diff}</td>
-                    <td>${device_id}</td>
-                    <td>${remarks}</td>
-                </tr>
+            response.forEach(log => {
+                let checkin = log.checkin ? convertTo12HourFormat(log.checkin) : '';
+                let checkout = log.checkout ? convertTo12HourFormat(log.checkout) : '';
+                mainString += `
+                    <tr>
+                        <td>${formattedDate}</td>
+                        <td>${checkin}</td>
+                        <td>${checkout}</td>
+                        <td>${log.time_spent}</td>
+                        <td>${log.device_id}</td>
+                        <td>${log.remarks}</td>
+                    </tr>
                 `;
+            });
+
+            mainString += `
+                <tr>
+                    <td colspan="3"><strong>Earned Time</strong></td>
+                    <td colspan="3">${totalFormattedTime}</td>
+                </tr>
+                <tr>
+                    <td colspan="3"><strong>Effective Time</strong></td>
+                    <td colspan="3">${effective_time}</td>
+                </tr>
+                <tr>
+                     <td colspan="3"><strong>Gross Hours</strong></td>
+                    <td colspan="3">08:00:00</td>
+                </tr>
+
+            `;
+
+            mainString += `
+                    </tbody>
+                </table>
+            `;
+
+            $('#view_modal_data').html(mainString);
+        },
+        error: function(xhr, status, error) {
+            console.error(error);
         }
-        mainString += `${subString}
-            <tr>
-                <td colspan="2"><strong>Earned Time</strong></td>
+    });
+}
 
-                <td colspan="3">${totalFormattedTime}</td>
-            </tr>
-            <tr>
-                <td colspan="2"><strong>Effective Time</strong></td>
-                <td colspan="3">${effective_time}</td>
-            </tr>
-            </tbody></table>`;
+function formatDate(dateString) {
+    let date = new Date(dateString); 
+    let month = String(date.getMonth() + 1).padStart(2, '0'); 
+    let day = String(date.getDate()).padStart(2, '0'); 
+    let year = date.getFullYear(); 
 
-        $('#view_modal_data').html(mainString);
-    }
+    return `${month}/${day}/${year}`; 
+}
 
-    function calculateEffectiveTime(logs) {
-        if (logs.length === 0) {
-            return "00:00:00"; // Return if there are no logs
-        }
+            function convertTo12HourFormat(timeStr) {
+                let [hours, minutes, seconds] = timeStr.split(':');
 
-        let earliestArrival = new Date(logs[0]['arrival_time']);
-        let latestLeave = new Date(logs[0]['leave_time']);
-
-        for (let index = 1; index < logs.length; index++) {
-            const element = logs[index];
-
-            let checkin = new Date(element['arrival_time']);
-            let checkout = new Date(element['leave_time']);
-
-            // Update the earliest arrival time
-            if (checkin < earliestArrival) {
-                earliestArrival = checkin;
+                hours = parseInt(hours);
+                if (hours > 12) {
+                    hours = hours - 12;
+                } else if (hours === 0) {
+                    hours = 12; // Midnight case
+                } else if (hours === 12) {
+                    hours = 12; // Noon case
+                }
+                hours = hours < 10 ? '0' + hours : hours;
+                return `${hours}:${minutes}:${seconds}`;
             }
 
-            // Update the latest leave time
-            if (checkout > latestLeave) {
-                latestLeave = checkout;
-            }
+        function calculateEffectiveTime(logs, arrivalDate) {
+            if (!logs.length) return "00:00:00"; // If no logs, return zero time.
+            let checkInTimes = logs.map(log => convertToSeconds(log.checkin)).filter(time => time !== null);
+            let checkOutTimes = logs.map(log => convertToSeconds(log.checkout)).filter(time => time !== null);
+            if (!checkInTimes.length || !checkOutTimes.length) return "00:00:00"; // If missing times, return zero time.
+
+            let firstCheckIn = Math.min(...checkInTimes);
+            let lastCheckOut = Math.max(...checkOutTimes);
+
+            let differenceInSeconds = lastCheckOut - firstCheckIn;
+
+            let hours = Math.floor(differenceInSeconds / 3600);
+            let minutes = Math.floor((differenceInSeconds % 3600) / 60);
+            let seconds = differenceInSeconds % 60; // Ensure correct seconds value
+
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         }
 
-        // Calculate the total difference in milliseconds
-        const totalTimeDifference = Math.abs(latestLeave - earliestArrival);
 
-        return formatMilliseconds(totalTimeDifference);
-    }
+        function convertToSeconds(timeStr) {
+            if (!timeStr) return null;
 
-    function formatMilliseconds(ms) {
-        let totalSeconds = Math.floor(ms / 1000);
-        let totalMinutes = Math.floor(totalSeconds / 60);
-        let totalHours = Math.floor(totalMinutes / 60);
+            let parts = timeStr.split(':'); 
 
-        let seconds = totalSeconds % 60;
-        let minutes = totalMinutes % 60;
-        let hours = totalHours;
+            let hours = parseInt(parts[0], 10); // Explicit base-10 conversion
+            let minutes = parseInt(parts[1], 10); 
+            let seconds = parts.length === 3 ? parseInt(parts[2], 10) : 0; // Ensure seconds are accounted for
 
-        // Ensure two digits for hours, minutes, and seconds
-        let formattedHours = String(hours).padStart(2, '0');
-        let formattedMinutes = String(minutes).padStart(2, '0');
-        let formattedSeconds = String(seconds).padStart(2, '0');
-
-        // Construct the formatted time string
-        let formattedTime = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-
-        return formattedTime;
-    }
-
-    function calculateTotalTimeDifference(logs) {
-        let totalTimeDifference = 0;
-
-        for (let index = 0; index < logs.length; index++) {
-            const element = logs[index];
-
-            let checkin = new Date(element['arrival_time']);
-            let checkout = new Date(element['leave_time']);
-
-            // Calculate the difference in milliseconds and add it to the total
-            totalTimeDifference += Math.abs(checkout - checkin);
+            return hours * 3600 + minutes * 60 + seconds;
         }
-        return formatMilliseconds(totalTimeDifference);
-    }
 
-    function calculateTimeDifference(datetime1, datetime2) {
-        // Parse the timestamps into Date objects
-        let date1 = new Date(datetime1);
-        let date2 = new Date(datetime2);
 
-        // Calculate the difference in milliseconds
-        let timeDifference = Math.abs(date2 - date1);
+        function calculateEarnedTime(logs) {
+    let totalEarnedTimeInSeconds = 0;
 
-        return formatMilliseconds(timeDifference)
+    logs.forEach(log => {
+        if (log.time_spent) {
+            totalEarnedTimeInSeconds += convertToSeconds(log.time_spent);
+        }
+    });
 
-        // return formattedDifference || '00:00:00';
-    }
+    return convertSecondsToTime(totalEarnedTimeInSeconds);
+}
 
-    function formatLogDate(datetime) {
-        // Parse the timestamp into a Date object
-        let date = new Date(datetime);
+        function convertSecondsToTime(totalSeconds) {
+            let hours = Math.floor(totalSeconds / 3600);
+            let minutes = Math.floor((totalSeconds % 3600) / 60);
+            let seconds = totalSeconds % 60;
 
-        // Add 4 hours (4 hours * 60 minutes * 60 seconds * 1000 milliseconds)
-        date.setTime(date.getTime() + 4 * 60 * 60 * 1000);
-
-        // Format the date with seconds, 24-hour format, and timezone
-        let formattedDate = date.toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit', // Include seconds
-            hour12: false, // Use 24-hour clock format
-            //timeZoneName: 'short' // Include timezone abbreviation
-        });
-
-        return formattedDate;
-    }
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
 </script>
 @endpush

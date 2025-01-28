@@ -64,17 +64,19 @@ class AttendenceController extends Controller {
                 // Calculate earned time based on first and last log of the day
                 $firstLogTime = Carbon::parse($logsForDate->first()->time);
                 $lastLogTime = Carbon::parse($logsForDate->last()->time);
-
+                // echo "<p style='margin-top: 100px;padding-left:300px;'>$firstLogTime</p>";
+                // echo "<p style='margin-top: 100px;padding-left:300px;'>$lastLogTime</p>";
                 $effectiveHours = $firstLogTime->diff($lastLogTime);
                 $earnedHoursFormatted = sprintf('%02d:%02d:%02d', $effectiveHours->h, $effectiveHours->i, $effectiveHours->s);
                 $checkinTime = null;
                 $totalMinutes = null;
+                $totalSeconds = 0;
 
                 // Find the first "CheckIn" entry for check-in time
                 foreach ($logsForDate as $log) {
                     if ($log->type === 'CheckIn') {
-                        $checkinTime = Carbon::parse($log->time)->format('h:i A'); // 12-hour format without seconds
-                        $firsCheckIn = $checkinTime; // 12-hour format without seconds
+                        $checkinTime = Carbon::parse($log->time)->format('h:i:s A');
+                        $firsCheckIn = $checkinTime; 
                         break;
                     }
                 }
@@ -90,9 +92,9 @@ class AttendenceController extends Controller {
                         for ($j = $i + 1; $j < $logsForDate->count(); $j++) {
                             if ($logsForDate[$j]->type === 'CheckOut') {
                                 $checkOutTime = Carbon::parse($logsForDate[$j]->time);
-                                $minutesSpent = $checkInTime->diffInMinutes($checkOutTime);
-
-                                $totalMinutes += $minutesSpent;
+                                $secondsSpent = $checkInTime->diffInSeconds($checkOutTime);
+                                // $totalMinutes += $minutesSpent;
+                                $totalSeconds += $secondsSpent;
 
                                 // Move index to the position of this CheckOut to continue
                                 $i = $j;
@@ -103,7 +105,7 @@ class AttendenceController extends Controller {
                 }
                 $policy = $employee->policy[0];
                 
-                $earnedHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
+                $earnedHours = sprintf(   '%02d:%02d:%02d',intdiv($totalSeconds, 3600),intdiv($totalSeconds % 3600, 60),$totalSeconds % 60);
                 $shift_start = Carbon::parse($policy->working_settings->shift_start);
                 $calculatedLeniency = $shift_start->addMinutes($policy->working_settings->late_c_l_t);
                 $shift_close = $policy->working_settings->shift_close;
@@ -163,11 +165,12 @@ class AttendenceController extends Controller {
                 $earnedHoursFormatted = sprintf('%02d:%02d:%02d', $effectiveHours->h, $effectiveHours->i, $effectiveHours->s);
                 $checkinTime = null;
                 $totalMinutes = null;
+                $totalSeconds = 0;
 
                 // Find the first "CheckIn" entry for check-in time
                 foreach ($logsForDate as $log) {
                     if ($log->type === 'CheckIn') {
-                        $checkinTime = Carbon::parse($log->time)->format('h:i A'); // 12-hour format without seconds
+                        $checkinTime = Carbon::parse($log->time)->format('h:i:s A'); 
                         $firsCheckIn = $checkinTime; // 12-hour format without seconds
                         break;
                     }
@@ -184,9 +187,10 @@ class AttendenceController extends Controller {
                         for ($j = $i + 1; $j < $logsForDate->count(); $j++) {
                             if ($logsForDate[$j]->type === 'CheckOut') {
                                 $checkOutTime = Carbon::parse($logsForDate[$j]->time);
-                                $minutesSpent = $checkInTime->diffInMinutes($checkOutTime);
+                                $secondsSpent = $checkInTime->diffInSeconds($checkOutTime);
 
-                                $totalMinutes += $minutesSpent;
+                                    // $totalMinutes += $minutesSpent;
+                                    $totalSeconds += $secondsSpent;
 
                                 // Move index to the position of this CheckOut to continue
                                 $i = $j;
@@ -197,16 +201,19 @@ class AttendenceController extends Controller {
                 }
                 $policy = $employee->policy[0];
                 
-                $earnedHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
+                $earnedHours = sprintf(   '%02d:%02d:%02d',intdiv($totalSeconds, 3600),intdiv($totalSeconds % 3600, 60),$totalSeconds % 60);
                 $shift_start = Carbon::parse($policy->working_settings->shift_start);
                 $calculatedLeniency = $shift_start->addMinutes($policy->working_settings->late_c_l_t);
                 $shift_close = $policy->working_settings->shift_close;
-                
+                $lateHours = null; 
+
                 $firstCheckIn = Carbon::parse($firsCheckIn);
-                if($firstCheckIn->lt($calculatedLeniency)){
-                    $status = 1;
+                if ($firstCheckIn->lt($calculatedLeniency)) {
+                    $status = 1; 
                 } else {
-                    $status = 0;
+                    $status = 0; 
+                    $lateTime = $firstCheckIn->diff($policy->working_settings->shift_start);  
+                    $lateHours = $lateTime->format('%H:%I:%S'); 
                 }
                 $gross_time = DateHelper::differenceHoursMinutes2($policy->working_settings->shift_start, $shift_close);                    
 
@@ -225,7 +232,8 @@ class AttendenceController extends Controller {
                     'status' => $status,
                     'attendence_visual' => $attendence_visual,
                     'shift_start' => $policy->working_settings->shift_start,
-                    'leniency' => $policy->working_settings->late_c_l_t
+                    'leniency' => $policy->working_settings->late_c_l_t,
+                    'late_Hours' => $lateHours,
                 ];
             } else {
                 return [
@@ -242,55 +250,94 @@ class AttendenceController extends Controller {
     {
         $arrivalDate = $request->input('arrival_date');
         $userId = $request->input('user_id');
-
+    
         // Fetch the device logs based on the arrival date and user ID
         $deviceLogs = DeviceLog::where('user_id', $userId)
             ->where('date', $arrivalDate)
             ->orderBy('time')
             ->get();
-
+    
         $result = [];
         $count = $deviceLogs->count();
-
+        $lastLogType = null;
+        $lastCheckIn = null; // Store the last CheckIn log
+    
         for ($i = 0; $i < $count; $i++) {
             $currentLog = $deviceLogs[$i];
-
-            // Check if the current log is a CheckIn
-            if ($currentLog->type == 'CheckIn') {
-                $checkinTime = date('g:i A', strtotime($currentLog->time));
-                $nextCheckoutTime = null;
-
-                // Look for the next Checkout log
-                for ($j = $i + 1; $j < $count; $j++) {
-                    if ($deviceLogs[$j]->type == 'CheckOut') {
-                        $nextCheckoutTime = $deviceLogs[$j]->time;
-                        break;
-                    }
-                }
-
-                // If we found a Checkout log, calculate time spent
-                if ($nextCheckoutTime) {
-                    $checkoutTime = date('g:i A', strtotime($nextCheckoutTime));
-                    $timeSpent = (strtotime($nextCheckoutTime) - strtotime($currentLog->time)) / 60; // in minutes
-
+    
+            if ($currentLog->type === 'CheckIn') {
+                $checkinTime = date('H:i:s A', strtotime($currentLog->time));
+    
+                // Handle consecutive CheckIns by pairing the previous CheckIn with itself
+                if ($lastLogType === 'CheckIn') {
+                    $lastCheckInTime = date('H:i:s A', strtotime($lastCheckIn->time));
                     $result[] = [
-                        'device_id' => $currentLog->device_id,
+                        'device_id' => $lastCheckIn->device_id,
+                        'arrivalDate' => $arrivalDate,
+                        'checkin' => $lastCheckInTime,
+                        'checkout' => $lastCheckInTime,
+                        'time_spent' => "00:00:00",
+                        'remarks' => "Consecutive CheckIn"
+                    ];
+                }
+    
+                // Update the last CheckIn log
+                $lastCheckIn = $currentLog;
+                $lastLogType = 'CheckIn';
+            } elseif ($currentLog->type === 'CheckOut') {
+                $checkoutTime = date('H:i:s A', strtotime($currentLog->time));
+    
+                // Handle CheckIn followed by CheckOut
+                if ($lastLogType === 'CheckIn' && $lastCheckIn) {
+                    $checkinTime = date('H:i:s A', strtotime($lastCheckIn->time));
+                    $timeDifferenceInSeconds = strtotime($currentLog->time) - strtotime($lastCheckIn->time);
+                    $hours = floor($timeDifferenceInSeconds / 3600);
+                    $minutes = floor(($timeDifferenceInSeconds / 60) % 60);
+                    $seconds = $timeDifferenceInSeconds % 60;
+                    $timeSpent = sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);
+    
+                    $result[] = [
+                        'device_id' => $lastCheckIn->device_id,
                         'arrivalDate' => $arrivalDate,
                         'checkin' => $checkinTime,
                         'checkout' => $checkoutTime,
-                        'remarks' => $currentLog->remarks,
-                        'time_spent' => "{$timeSpent} Min"
+                        'time_spent' => $timeSpent,
+                        'remarks' => ""
                     ];
+    
+                    // Clear the last CheckIn log
+                    $lastCheckIn = null;
+                } else {
+                    // Handle consecutive CheckOuts by pairing the current CheckOut with itself
+                    if ($lastLogType === 'CheckOut') {
+                        $result[] = [
+                            'device_id' => $currentLog->device_id,
+                            'arrivalDate' => $arrivalDate,
+                            'checkin' => $checkoutTime,
+                            'checkout' => $checkoutTime,
+                            'time_spent' => "00:00:00",
+                            'remarks' => "Consecutive CheckOut"
+                        ];
+                    }
                 }
-            }
-
-            // Check if the current log is a CheckOut
-            if ($currentLog->type == 'CheckOut') {
-                // In case of consecutive CheckOuts, we just skip to the next iteration
-                continue;
+    
+                $lastLogType = 'CheckOut'; // Update the last processed log type
             }
         }
-
+    
+        // Handle any unmatched CheckIn at the end of the log
+        if ($lastLogType === 'CheckIn' && $lastCheckIn) {
+            $checkinTime = date('H:i:s A', strtotime($lastCheckIn->time));
+            $result[] = [
+                'device_id' => $lastCheckIn->device_id,
+                'arrivalDate' => $arrivalDate,
+                'checkin' => $checkinTime,
+                'checkout' => $checkinTime,
+                'time_spent' => "00:00:00",
+                'remarks' => "Unmatched CheckIn"
+            ];
+        }
+    
         return response()->json($result);
     }
     // late commers service
@@ -422,9 +469,9 @@ class AttendenceController extends Controller {
                     }
                     $sheet->setCellValue('A' . $row, $attendance->user->first_name . ' ' . $attendance->user->last_name);
                     $sheet->setCellValue('B' . $row, $checkIn->format('d/m/Y'));
-                    $sheet->setCellValue('C' . $row, $checkIn->format('g:i A'));
+                    $sheet->setCellValue('C' . $row, $checkIn->format('H:i:s A'));
                     $sheet->setCellValue('D' . $row, $checkOut->format('d/m/Y'));
-                    $sheet->setCellValue('E' . $row, $checkOut->format('g:i A'));
+                    $sheet->setCellValue('E' . $row, $checkOut->format('H:iS A'));
                     $sheet->setCellValue('F' . $row, $this->getAttendenceLabel($attendance->status));
                     $row++;
                 }

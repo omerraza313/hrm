@@ -6,7 +6,8 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class DateLog extends Model {
+class DateLog extends Model
+{
     use HasFactory;
 
     protected $table = 'dates';
@@ -28,7 +29,7 @@ class DateLog extends Model {
     {
         // dd($value);
         if (!strpos($value, "-")) {
-            $utcTime = Carbon::createFromFormat('d/m/Y', $value)
+            $utcTime = Carbon::createFromFormat('m/d/Y', $value)
                 ->setTimezone('UTC');
             $formattedUtcTime = $utcTime->format('Y-m-d');
         } else {

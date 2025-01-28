@@ -6,7 +6,8 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use DateTime;
 
-class DateHelper {
+class DateHelper
+{
     public static function getMonths(): array
     {
         return [
@@ -42,7 +43,7 @@ class DateHelper {
         return $date->format($format);
     }
 
-    public static function globaldateFormat($format = 'j M Y', $date)
+    public static function globaldateFormat($format = 'M j Y', $date)
     {
         $date = Carbon::parse($date);
         return $date->format($format);
@@ -69,7 +70,7 @@ class DateHelper {
         $time2 = Carbon::createFromFormat('H:i:s', $time2);
 
         // Check if arrival is after shift start
-        if ($time2->greaterThan($time1) ) {
+        if ($time2->greaterThan($time1)) {
             // Calculate late time and return formatted string
             $diffInSeconds = $time2->diffInSeconds($time1);
             $hours = floor($diffInSeconds / 3600);
@@ -83,7 +84,8 @@ class DateHelper {
         // Return null if not late
         return '';
     }
-    public static function convert_time_to_seconds($time_string) {
+    public static function convert_time_to_seconds($time_string)
+    {
         // Split the time string into hours, minutes, and seconds
         list($hours, $minutes, $seconds) = explode(':', $time_string);
 
@@ -92,7 +94,8 @@ class DateHelper {
 
         return $total_seconds;
     }
-    public static function calculateTimePercentage($earned_time, $gross_hours) {
+    public static function calculateTimePercentage($earned_time, $gross_hours)
+    {
         // Convert to seconds
         $earnedSeconds = Carbon::createFromFormat('H:i:s', $earned_time)->diffInSeconds(Carbon::now());
         $grossSeconds = Carbon::createFromFormat('H:i:s', $gross_hours)->diffInSeconds(Carbon::now());
@@ -128,8 +131,8 @@ class DateHelper {
     }
     public static function differenceHoursMinutes($start, $close)
     {
-        $carbonTime1 = Carbon::createFromFormat('H:i A', $start);
-        $carbonTime2 = Carbon::createFromFormat('H:i A', $close);
+        $carbonTime1 = Carbon::createFromFormat('H:i:s A', $start);
+        $carbonTime2 = Carbon::createFromFormat('H:i:s A', $close);
 
         // Calculate the total difference in minutes
         $minutesDifference = $carbonTime1->diffInMinutes($carbonTime2);
@@ -142,7 +145,7 @@ class DateHelper {
         $minutes = $minutesDifference % 60;
 
         // Format the result as hh:ii
-        return sprintf('%02d:%02d', $hours, $minutes).":00";
+        return sprintf('%02d:%02d', $hours, $minutes) . ":00";
     }
     public static function globaldifferenceHours($start, $close)
     {
@@ -150,7 +153,7 @@ class DateHelper {
         $carbonTime2 = Carbon::parse($close);
 
         $hoursDifference = $carbonTime1->diffInHours($carbonTime2);
-//        dd([$start,$close, $hoursDifference]);
+        //        dd([$start,$close, $hoursDifference]);
         return $hoursDifference;
     }
 
@@ -185,34 +188,40 @@ class DateHelper {
     }
 
 
-    public static function convertSecondsToTimeFormat($totalSeconds) {
+    public static function convertSecondsToTimeFormat($totalSeconds)
+    {
         $hours = floor($totalSeconds / 3600);
         $minutes = floor(($totalSeconds % 3600) / 60);
         $seconds = $totalSeconds % 60;
 
         return sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);
     }
-    public static function add_time($time1) {
+    public static function add_time($time1)
+    {
         $times = explode(':', $time1);
-//        dd($times);
-        return (int) (isset($times[0]) ? (int) $times[0] *3600 : 0 ) + (isset($times[1]) ? (int) $times[1] *60 : 0) +  (isset($times[2]) ? (int) $times[2]: 0) ;
+        //        dd($times);
+        return (int) (isset($times[0]) ? (int) $times[0] * 3600 : 0) + (isset($times[1]) ? (int) $times[1] * 60 : 0) +  (isset($times[2]) ? (int) $times[2] : 0);
     }
 
-    public static function get_HIA_to_HIS($time1) {
+    public static function get_HIA_to_HIS($time1)
+    {
         $carbonTime1 = Carbon::createFromFormat('H:i A', $time1);
         return $carbonTime1->format('H:i:s');
     }
-    public static function getLateTime($time1, $time2) {
-        if(empty($time2) || empty($time1)){return null;}
-            $carbonTime1 = Carbon::createFromFormat('h:i A', $time1);
-            $time1f = $carbonTime1->format('H:i:s');
+    public static function getLateTime($time1, $time2)
+    {
+        if (empty($time2) || empty($time1)) {
+            return null;
+        }
+        $carbonTime1 = Carbon::createFromFormat('h:i A', $time1);
+        $time1f = $carbonTime1->format('H:i:s');
 
-            // Convert the second time from 'H:i:s' format
-            $datetime1 = Carbon::createFromFormat('H:i:s', $time1f);
-            $datetime2 = Carbon::createFromFormat('H:i:s', $time2);
+        // Convert the second time from 'H:i:s' format
+        $datetime1 = Carbon::createFromFormat('H:i:s', $time1f);
+        $datetime2 = Carbon::createFromFormat('H:i:s', $time2);
 
-            // Calculate the difference in seconds
-            $secondsDifference = $datetime1->diffInSeconds($datetime2);
+        // Calculate the difference in seconds
+        $secondsDifference = $datetime1->diffInSeconds($datetime2);
         // Check if the difference is more than 15 minutes (900 seconds) and $time2 is after $time1
         if ($datetime2->greaterThan($datetime1) && $secondsDifference > 900) {
             $hours = intdiv($secondsDifference, 3600);
@@ -237,19 +246,21 @@ class DateHelper {
         return $minutesDifference;
     }
 
-    public static function progressBarWith9H($earned_time, $hours = 9){
+    public static function progressBarWith9H($earned_time, $hours = 9)
+    {
         $earned_times = explode(':', $earned_time);
-        $shift_time = $hours * 60 ;
-        $total_minutes = ( ( $earned_times[0] ?? 0) * 60 ) + ($earned_times[1] ?? 0);
-        $attendence_visual = (int) ( ( $total_minutes*100 ) / $shift_time );
+        $shift_time = $hours * 60;
+        $total_minutes = (($earned_times[0] ?? 0) * 60) + ($earned_times[1] ?? 0);
+        $attendence_visual = (int) (($total_minutes * 100) / $shift_time);
         $attendence_visual = $attendence_visual > 100 ? 100 : $attendence_visual;
         $attendence_visual = $attendence_visual < 0 ? 0 : $attendence_visual;
 
         return $attendence_visual;
     }
-    public static function calculateTimeDifference($start_time, $end_time, $new_date) {
-        $carbonTime1 = Carbon::createFromFormat('Y-m-d H:i A', $new_date . ' ' . $start_time);
-        $carbonTime2 = Carbon::createFromFormat('Y-m-d H:i A', $new_date . ' ' . '08:01 AM');
+    public static function calculateTimeDifference($start_time, $end_time, $new_date)
+    {
+        $carbonTime1 = Carbon::createFromFormat('Y-m-d H:i:s A', $new_date . ' ' . $start_time);
+        $carbonTime2 = Carbon::createFromFormat('Y-m-d H:i:s A', $new_date . ' ' . '08:01 AM');
 
         // Handle cases where end time is before start time (e.g., overnight shifts)
         if ($carbonTime2->lessThan($carbonTime1)) {
@@ -286,7 +297,7 @@ class DateHelper {
     {
         // dd($value);
         if (!strpos($value, "-")) {
-            $utcTime = Carbon::createFromFormat('d/m/Y', $value) // Set the time to midnight
+            $utcTime = Carbon::createFromFormat('m/d/Y', $value) // Set the time to midnight
                 ->setTimezone('UTC');
             $formattedUtcTime = $utcTime->format('Y-m-d');
         } else {
@@ -324,7 +335,8 @@ class DateHelper {
         return $formattedUtcTime;
     }
 
-    public static function convertGrossHrsToTime($grossHrs) {
+    public static function convertGrossHrsToTime($grossHrs)
+    {
         if ($grossHrs == '00:00:00') {
             return $grossHrs;
         }
@@ -352,9 +364,10 @@ class DateHelper {
         // If the pattern doesn't match, return a default or handle the error as needed
         return '00:00:00';
     }
-    public static function convertGrossHrsToTime_old($grossHrs) {
+    public static function convertGrossHrsToTime_old($grossHrs)
+    {
 
-        if($grossHrs == '00:00:00'){
+        if ($grossHrs == '00:00:00') {
             return $grossHrs;
         }
         // Extract hours and minutes using regular expression
@@ -372,7 +385,8 @@ class DateHelper {
 
         return $formattedTime;
     }
-    public static function formatDuration($hours, $minutes) {
+    public static function formatDuration($hours, $minutes)
+    {
         // Calculate total seconds
         $totalSeconds = ($hours * 3600) + ($minutes * 60);
 
@@ -381,20 +395,22 @@ class DateHelper {
 
         return $formattedTime;
     }
-    public static function getDatesRange($start_date, $end_date) {
-        $st_dates= [$start_date, $end_date];
-        $startDate = Carbon::createFromFormat('m/d/Y', $start_date)->format('Y-m-d') ;
-        $endDate = Carbon::create($end_date) ;
+    public static function getDatesRange($start_date, $end_date)
+    {
+        $st_dates = [$start_date, $end_date];
+        $startDate = Carbon::createFromFormat('m/d/Y', $start_date)->format('Y-m-d');
+        $endDate = Carbon::create($end_date);
         //dd([$start_date, $end_date, $st_dates, $startDate, $endDate]);
 
         $period = CarbonPeriod::create($startDate, $endDate);
         foreach ($period as $date) {
-            $dates_range[$date->format('Y-m-d')] = $date->format('Y-m-d') ;
+            $dates_range[$date->format('Y-m-d')] = $date->format('Y-m-d');
         }
 
         return $dates_range;
     }
-    public static function calculateEffectiveTime($logs, $times = false) {
+    public static function calculateEffectiveTime($logs, $times = false)
+    {
         if (empty($logs)) {
             return '00:00:00'; // Return if there are no logs
         }
@@ -418,7 +434,7 @@ class DateHelper {
             }
         }
 
-        if($times){
+        if ($times) {
             return [
                 'last_leave' => $earliestArrival,
                 'first_arival' => $latestLeave,
@@ -431,7 +447,8 @@ class DateHelper {
         return DateHelper::formatSeconds($totalTimeDifference);
     }
 
-    public static function formatSeconds($seconds) {
+    public static function formatSeconds($seconds)
+    {
         $hours = floor($seconds / 3600);
         $minutes = floor(($seconds % 3600) / 60);
         $remainingSeconds = $seconds % 60;
@@ -441,10 +458,11 @@ class DateHelper {
 
 
 
-    public static function calculateTotalTimeDifference($logs) {
+    public static function calculateTotalTimeDifference($logs)
+    {
         $totalTimeDifference = 0;
 
-        if(empty($logs)){
+        if (empty($logs)) {
             return DateHelper::formatMilliseconds($totalTimeDifference);
         }
         foreach ($logs as $log) {
@@ -460,7 +478,8 @@ class DateHelper {
         return DateHelper::formatMilliseconds($totalTimeDifference);
     }
 
-    public static function formatMilliseconds($ms) {
+    public static function formatMilliseconds($ms)
+    {
         // Calculate total seconds, minutes, and hours
         $totalSeconds = floor($ms / 1000);
         $totalMinutes = floor($totalSeconds / 60);
@@ -480,5 +499,4 @@ class DateHelper {
 
         return $formattedTime;
     }
-
 }

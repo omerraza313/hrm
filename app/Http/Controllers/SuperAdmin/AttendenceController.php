@@ -26,10 +26,10 @@ use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
-class AttendenceController extends Controller {
-    public function __construct(protected AttendenceService $attendenceService)
-    {
-    }
+
+class AttendenceController extends Controller
+{
+    public function __construct(protected AttendenceService $attendenceService) {}
 
     // public function index(Request $request)
     // {
@@ -46,30 +46,30 @@ class AttendenceController extends Controller {
         $employees = User::Role(RolesEnum::Employee->value)->get();
 
         $uniqueDatesQuery = DeviceLog::query();
-        
-        if($employee_id) {
+
+        if ($employee_id) {
             $employee = User::where('id', $employee_id)->with(['policy.working_settings'])->first();
             $uniqueDatesQuery->where('user_id', $employee->id);
         }
 
-        if($from_date) {
+        if ($from_date) {
             $carbonDate = Carbon::createFromFormat('m/d/Y', $from_date);
             $formattedDate = $carbonDate->format('Y-m-d');
-            $uniqueDatesQuery->where('date' , '>=', $formattedDate);
+            $uniqueDatesQuery->where('date', '>=', $formattedDate);
         }
 
-        if($to_date) {
+        if ($to_date) {
             $carbonDate = Carbon::createFromFormat('m/d/Y', $to_date);
             $formattedDate = $carbonDate->format('Y-m-d');
             $uniqueDatesQuery->where('date', '<=', $formattedDate);
         }
-        
-        $uniqueDates = $uniqueDatesQuery
-        ->selectRaw('date')
-        ->groupBy('date')
-        ->orderBy('date', 'desc')->get();
 
-        if(!$employee_id) {
+        $uniqueDates = $uniqueDatesQuery
+            ->selectRaw('date')
+            ->groupBy('date')
+            ->orderBy('date', 'desc')->get();
+
+        if (!$employee_id) {
             return view('admin.attendence.regular.view', ['flattenedAttendanceData' => [], 'employees' => $employees]);
         }
 
@@ -84,6 +84,7 @@ class AttendenceController extends Controller {
             $attendanceByUser = $logsForDate->groupBy('user_id')->map(function ($logsForUser) use ($logDate, $employee) {
                 $checkinTime = null;
                 $totalMinutes = 0;
+                $totalSeconds = 0;
                 $earnedHoursFormatted = '00:00:00';
                 if ($logsForUser->isNotEmpty()) {
                     // Calculate earned time based on first and last log of the day
@@ -92,12 +93,12 @@ class AttendenceController extends Controller {
 
                     $effectiveHours = $firstLogTime->diff($lastLogTime);
                     $earnedHoursFormatted = sprintf('%02d:%02d:%02d', $effectiveHours->h, $effectiveHours->i, $effectiveHours->s);
-                    
+
                     // Find the first "CheckIn" entry for check-in time
                     foreach ($logsForUser as $log) {
                         if ($log->type === 'CheckIn') {
-                            $checkinTime = Carbon::parse($log->time)->format('h:i A');
-                            $firsCheckIn = $checkinTime; // 12-hour format without seconds
+                            $checkinTime = Carbon::parse($log->time)->format('h:i:s A');
+                            $firsCheckIn = $checkinTime;
                             break;
                         }
                     }
@@ -113,9 +114,10 @@ class AttendenceController extends Controller {
                             for ($j = $i + 1; $j < $logsForUser->count(); $j++) {
                                 if ($logsForUser[$j]->type === 'CheckOut') {
                                     $checkOutTime = Carbon::parse($logsForUser[$j]->time);
-                                    $minutesSpent = $checkInTime->diffInMinutes($checkOutTime);
-
-                                    $totalMinutes += $minutesSpent;
+                                    // $minutesSpent = $checkInTime->diffInMinutes($checkOutTime);
+                                    $secondsSpent = $checkInTime->diffInSeconds($checkOutTime);
+                                    // $totalMinutes += $minutesSpent;
+                                    $totalSeconds += $secondsSpent;
 
                                     // Move index to the position of this CheckOut to continue
                                     $i = $j;
@@ -125,23 +127,27 @@ class AttendenceController extends Controller {
                         }
                     }
                     $policy = $employee->policy[0];
-                    $earnedHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
+                    // $earnedHours = sprintf('%02d:%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60, 0);
+                    $earnedHours = sprintf('%02d:%02d:%02d', intdiv($totalSeconds, 3600), intdiv($totalSeconds % 3600, 60), $totalSeconds % 60);
 
                     $shift_start = Carbon::parse($policy->working_settings->shift_start);
                     $calculatedLeniency = $shift_start->addMinutes($policy->working_settings->late_c_l_t);
                     $shift_close = $policy->working_settings->shift_close;
-                    
+                    $lateFormattedTime = null;
+
                     $firstCheckIn = Carbon::parse($firsCheckIn);
-                    if($firstCheckIn->lt($calculatedLeniency)){
+                    if ($firstCheckIn->lt($calculatedLeniency)) {
                         $status = 1;
                     } else {
                         $status = 0;
+                        $lateTime = $firstCheckIn->diff($policy->working_settings->shift_start);
+                        $lateFormattedTime = $lateTime->format('%H:%I:%S');
                     }
-                    $gross_time = DateHelper::differenceHoursMinutes2($policy->working_settings->shift_start, $shift_close);                    
+                    $gross_time = DateHelper::differenceHoursMinutes2($policy->working_settings->shift_start, $shift_close);
 
                     $earned_seconds = DateHelper::convert_time_to_seconds($earnedHours);
                     $gross_seconds = DateHelper::convert_time_to_seconds($gross_time);
-                    $attendence_visual = (int)(($earned_seconds*100) / $gross_seconds );
+                    $attendence_visual = (int)(($earned_seconds * 100) / $gross_seconds);
 
 
                     return [
@@ -155,12 +161,13 @@ class AttendenceController extends Controller {
                         'status' => $status,
                         'attendence_visual' => $attendence_visual,
                         'shift_start' => $policy->working_settings->shift_start,
-                        'leniency' => $policy->working_settings->late_c_l_t
+                        'leniency' => $policy->working_settings->late_c_l_t,
+                        'lateFormattedTime' => $lateFormattedTime,
                     ];
                 } else {
                     return [
                         'user_id' => $logsForUser->first()->user_id,
-                        'checkin_time' => null,
+                        'checkin_time' => "",
                         'earned_time' => '00:00:00',
                         'effective_time' => '00:00:00',
                         'gross_time' => '00:00:00',
@@ -169,7 +176,8 @@ class AttendenceController extends Controller {
                         'status' => 3,
                         'attendence_visual' => '',
                         'shift_start' => '',
-                        'leniency' => ''
+                        'leniency' => '',
+                        'lateFormattedTime' => '',
 
                     ];
                 }
@@ -181,7 +189,7 @@ class AttendenceController extends Controller {
         // Flatten the nested arrays if necessary
         $flattenedAttendanceData = $newAttendanceData->flatten(1);
         // Return the view with all users' attendance data
-        
+
 
         return view('admin.attendence.regular.view', compact('flattenedAttendanceData', 'employees'));
     }
@@ -199,58 +207,89 @@ class AttendenceController extends Controller {
 
         $result = [];
         $count = $deviceLogs->count();
+        $lastLogType = null;
+        $lastCheckIn = null; // Store the last CheckIn log
 
         for ($i = 0; $i < $count; $i++) {
             $currentLog = $deviceLogs[$i];
 
-            // Check if the current log is a CheckIn
-            if ($currentLog->type == 'CheckIn') {
-                $checkinTime = date('g:i A', strtotime($currentLog->time));
-                $nextCheckoutTime = null;
+            if ($currentLog->type === 'CheckIn') {
+                $checkinTime = date('H:i:s A', strtotime($currentLog->time));
 
-                // Look for the next Checkout log
-                for ($j = $i + 1; $j < $count; $j++) {
-                    if ($deviceLogs[$j]->type == 'CheckOut') {
-                        $nextCheckoutTime = $deviceLogs[$j]->time;
-                        break;
-                    }
+                // Handle consecutive CheckIns by pairing the previous CheckIn with itself
+                if ($lastLogType === 'CheckIn') {
+                    $lastCheckInTime = date('H:i:s A', strtotime($lastCheckIn->time));
+                    $result[] = [
+                        'device_id' => $lastCheckIn->device_id,
+                        'arrivalDate' => $arrivalDate,
+                        'checkin' => $lastCheckInTime,
+                        'checkout' => $lastCheckInTime,
+                        'time_spent' => "00:00:00",
+                        'remarks' => "Consecutive CheckIn"
+                    ];
                 }
 
-                // If we found a Checkout log, calculate time spent
-                if ($nextCheckoutTime) {
-                    $checkoutTime = date('g:i A', strtotime($nextCheckoutTime));
-                    // $timeSpent = (strtotime($nextCheckoutTime) - strtotime($currentLog->time)) / 60; // in minutes
-                     // Calculate the time difference in seconds
-                    $timeDifferenceInSeconds = strtotime($nextCheckoutTime) - strtotime($currentLog->time);
+                // Update the last CheckIn log
+                $lastCheckIn = $currentLog;
+                $lastLogType = 'CheckIn';
+            } elseif ($currentLog->type === 'CheckOut') {
+                $checkoutTime = date('H:i:s A', strtotime($currentLog->time));
 
-                    // Convert seconds into hh:mm:ss format
+                // Handle CheckIn followed by CheckOut
+                if ($lastLogType === 'CheckIn' && $lastCheckIn) {
+                    $checkinTime = date('H:i:s A', strtotime($lastCheckIn->time));
+                    $timeDifferenceInSeconds = strtotime($currentLog->time) - strtotime($lastCheckIn->time);
                     $hours = floor($timeDifferenceInSeconds / 3600);
                     $minutes = floor(($timeDifferenceInSeconds / 60) % 60);
                     $seconds = $timeDifferenceInSeconds % 60;
-
-                    // Format as hh:mm:ss
                     $timeSpent = sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);
 
                     $result[] = [
-                        'device_id' => $currentLog->device_id,
+                        'device_id' => $lastCheckIn->device_id,
                         'arrivalDate' => $arrivalDate,
                         'checkin' => $checkinTime,
                         'checkout' => $checkoutTime,
                         'time_spent' => $timeSpent,
-                        'remarks' => $currentLog->remarks
+                        'remarks' => ""
                     ];
-                }
-            }
 
-            // Check if the current log is a CheckOut
-            if ($currentLog->type == 'CheckOut') {
-                // In case of consecutive CheckOuts, we just skip to the next iteration
-                continue;
+                    // Clear the last CheckIn log
+                    $lastCheckIn = null;
+                } else {
+                    // Handle consecutive CheckOuts by pairing the current CheckOut with itself
+                    if ($lastLogType === 'CheckOut') {
+                        $result[] = [
+                            'device_id' => $currentLog->device_id,
+                            'arrivalDate' => $arrivalDate,
+                            'checkin' => $checkoutTime,
+                            'checkout' => $checkoutTime,
+                            'time_spent' => "00:00:00",
+                            'remarks' => "Consecutive CheckOut"
+                        ];
+                    }
+                }
+
+                $lastLogType = 'CheckOut'; // Update the last processed log type
             }
+        }
+
+        // Handle any unmatched CheckIn at the end of the log
+        if ($lastLogType === 'CheckIn' && $lastCheckIn) {
+            $checkinTime = date('H:i:s A', strtotime($lastCheckIn->time));
+            $result[] = [
+                'device_id' => $lastCheckIn->device_id,
+                'arrivalDate' => $arrivalDate,
+                'checkin' => $checkinTime,
+                'checkout' => $checkinTime,
+                'time_spent' => "00:00:00",
+                'remarks' => "Unmatched CheckIn"
+            ];
         }
 
         return response()->json($result);
     }
+
+
 
 
     public function update(AttendenceUpdateRequest $request)
@@ -282,11 +321,11 @@ class AttendenceController extends Controller {
 
         $row = 2;
 
-            Attendence::when(isset($data['from_date']) && $data['from_date'], function ($query) use ($data) {
-                $carbonDate = Carbon::createFromFormat('m/d/Y', $data['from_date']);
-                $formattedDate = $carbonDate->format('Y-m-d');
-                return $query->whereDate(DB::raw('CONVERT_TZ(arrival_time, "+00:00", "-04:00")'), '>=', $formattedDate);
-            })
+        Attendence::when(isset($data['from_date']) && $data['from_date'], function ($query) use ($data) {
+            $carbonDate = Carbon::createFromFormat('m/d/Y', $data['from_date']);
+            $formattedDate = $carbonDate->format('Y-m-d');
+            return $query->whereDate(DB::raw('CONVERT_TZ(arrival_time, "+00:00", "-04:00")'), '>=', $formattedDate);
+        })
             ->when(isset($data['to_date']) && $data['to_date'], function ($query) use ($data) {
                 $carbonDate = Carbon::createFromFormat('m/d/Y', $data['to_date']);
                 $formattedDate = $carbonDate->format('Y-m-d');
@@ -296,24 +335,24 @@ class AttendenceController extends Controller {
                 return $query->where('user_id', $data['employee_id']);
             })
             ->with(['user'])->chunk(100, function ($attendances) use ($sheet, &$row) {
-//                dd($attendances);
+                //                dd($attendances);
                 foreach ($attendances as $attendance) {
                     // Convert times to New York timezone
-                    if(is_null($attendance->leave_date)){
+                    if (is_null($attendance->leave_date)) {
                         $attendance->leave_time = $this->get_timeout($attendance->policy->working_settings->timeout_policy, $attendance->arrival_time);
                     }
                     $checkIn = Carbon::parse($attendance->arrival_time)->setTimezone('America/New_York');
                     $checkOut = Carbon::parse($attendance->leave_time)->setTimezone('America/New_York');
 
                     // Add a new row with data
-                    if(empty($attendance->user)){
+                    if (empty($attendance->user)) {
                         continue;
                         /*$sheet->setCellValue('A' . $row, $attendance->user_id);
                         $row++;*/
                     }
                     $effective_hrs_in_hours = DateHelper::globaldifferenceHours($checkIn, $checkOut ?? $checkIn);
                     $effective_hrs_in_minus = DateHelper::globaldifferenceMinus($checkIn, $checkOut ?? $checkIn);
-                    $time_string = ($effective_hrs_in_hours || $effective_hrs_in_minus) && $effective_hrs_in_hours<24 ? ($effective_hrs_in_hours<=9?"0":"").$effective_hrs_in_hours.":".($effective_hrs_in_minus<=9?"0":"").$effective_hrs_in_minus:'';
+                    $time_string = ($effective_hrs_in_hours || $effective_hrs_in_minus) && $effective_hrs_in_hours < 24 ? ($effective_hrs_in_hours <= 9 ? "0" : "") . $effective_hrs_in_hours . ":" . ($effective_hrs_in_minus <= 9 ? "0" : "") . $effective_hrs_in_minus : '';
                     $sheet->setCellValue('A' . $row, $attendance->user->first_name . ' ' . $attendance->user->last_name);
                     $sheet->setCellValue('B' . $row, $checkIn->format('m/d/Y'));
                     $sheet->setCellValue('C' . $row, $checkIn->format('G:i A'));
@@ -331,7 +370,7 @@ class AttendenceController extends Controller {
             $writer->save('php://output');
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => "attachment; filename=NovitaMS-HR-Attendence-export-".$today.".xlsx",
+            'Content-Disposition' => "attachment; filename=NovitaMS-HR-Attendence-export-" . $today . ".xlsx",
         ]);
 
         return $response;
@@ -359,7 +398,7 @@ class AttendenceController extends Controller {
         $attendances = AttendenceHelper::get_all_attendence_log($args);
         //$designations = AttendenceHelper::getDesignations();
 
-//        dd($attendances);
+        //        dd($attendances);
         $user_headings = [];
         $time_totals = [];
         ksort($attendances);
@@ -372,67 +411,69 @@ class AttendenceController extends Controller {
 
                 $employee_name = ($user['data']['first_name'] ?? '') . ' ' . ($user['data']['last_name'] ?? '');
                 //dd([$employee_details, $user, $designations]);
-                if($userId==1){
-                    $designation = ($userId==1 ? 'Super Admin' : ($attendence->user->employee_details->designation->name ?? $userId) );
+                if ($userId == 1) {
+                    $designation = ($userId == 1 ? 'Super Admin' : ($attendence->user->employee_details->designation->name ?? $userId));
                     $department = 'Novita MS';
-                }else{
+                } else {
                     $designation = $user['designation'] ?? 'n/a';
                     $department = $user['department'] ?? 'n/a';
                     //dd([$department, $designation, $user]);
                 }
 
-                if(empty($user_headings[$userId])){
+                if (empty($user_headings[$userId])) {
                     $user_headings[$userId] = $userId;
                     // empty row after employee
                     //dd("A{$row}:K{$row}");
-                    $sheet = $this->excel_populate_row($sheet, $row++, ['', '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ]);
+                    $sheet = $this->excel_populate_row($sheet, $row++, ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
 
-                    $sheet = $this->add_single_column_row($sheet, $row++, 'Employee Name : '.$employee_name);
-                    $sheet = $this->add_single_column_row($sheet, $row++, 'Employee ID : '.$userId);
-                    $sheet = $this->add_single_column_row($sheet, $row++, 'Department : '.$department);
-                    $sheet = $this->add_single_column_row($sheet, $row++, 'Designation: '.$designation);
+                    $sheet = $this->add_single_column_row($sheet, $row++, 'Employee Name : ' . $employee_name);
+                    $sheet = $this->add_single_column_row($sheet, $row++, 'Employee ID : ' . $userId);
+                    $sheet = $this->add_single_column_row($sheet, $row++, 'Department : ' . $department);
+                    $sheet = $this->add_single_column_row($sheet, $row++, 'Designation: ' . $designation);
                     //$sheet = $this->excel_populate_row($sheet, $row++, ['', '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ]);
 
                     $sheet = $this->get_excel_headings($sheet, $row++);
                 }
                 //dd([$user, $attendance, $userId]);
 
-                if(empty($time_totals[$userId])){
-                    $time_totals[$userId] = [ 'earned_times' => 0, 'effective_times' => 0,  'late_hours' => 0, 'gross_times' => 0 ];
+                if (empty($time_totals[$userId])) {
+                    $time_totals[$userId] = ['earned_times' => 0, 'effective_times' => 0,  'late_hours' => 0, 'gross_times' => 0];
                 }
-                $employee_details = $user['data']['employee_details'] ;
+                $employee_details = $user['data']['employee_details'];
                 if (is_null($attendance->leave_date) && !is_null($attendance->arrival_date)) {
                     $attendance->leave_time = $attendance->arrival_time;
                 }
 
-//                $day_of_week = Carbon::parse($attendance->arrival_date)->format('D');
-//                $is_it_weekend = AttendenceHelper::isItWeekEnd($day_of_week);
-//                if($is_it_weekend){ $sheet = $this->excel_format_row_bg($sheet, $row, 'D0D9E3FF'); }
-                if (empty($attendance->user)) { continue; }
+                //                $day_of_week = Carbon::parse($attendance->arrival_date)->format('D');
+                //                $is_it_weekend = AttendenceHelper::isItWeekEnd($day_of_week);
+                //                if($is_it_weekend){ $sheet = $this->excel_format_row_bg($sheet, $row, 'D0D9E3FF'); }
+                if (empty($attendance->user)) {
+                    continue;
+                }
 
                 $isWeekEnd = $attendance->isWeekEnd;
                 $attendance_date = Carbon::parse($attendance->arrival_date);
 
                 $effective_time = $attendance->effective_time;
-                $gross_time = $attendance->Gross_Hrs ;//= DateHelper::convertGrossHrsToTime($attendance->Gross_Hrs);
+                $gross_time = $attendance->Gross_Hrs; //= DateHelper::convertGrossHrsToTime($attendance->Gross_Hrs);
                 $earned_time = $attendance->earned_time;
                 $late_hours = $attendance->late_time;
-                $time_logs_count = $logs_count = count($attendance->logs) ; // count($attendance->logs);
+                $time_logs_count = $logs_count = count($attendance->logs); // count($attendance->logs);
 
                 $attendance_status = $this->getAttendenceLabelExcel($attendance->status);
-                if($attendance_status == 3 && ($earned_time > '00:00:00' || $logs_count > 0 )){
+                if ($attendance_status == 3 && ($earned_time > '00:00:00' || $logs_count > 0)) {
                     $attendance_status = $this->getAttendenceLabelExcel(1);
-                }else if($isWeekEnd){
+                } else if ($isWeekEnd) {
                     $attendance_status = $this->getAttendenceLabelExcel(2);
-                    if($earned_time == '00:00:00' || $earned_time == 0){
+                    if ($earned_time == '00:00:00' || $earned_time == 0) {
                         $gross_time = $effective_time = $earned_time = $late_hours = '';
                     }
                 }
 
-                if($attendance->status == 3){
+                if ($attendance->status == 3) {
                     $sheet = $this->excel_format_row_bg($sheet, $row, 'FFFFFFC5');
                 }
-                if($isWeekEnd){
+                if ($isWeekEnd) {
                     $statuses[$attendance->arrival_date] = $attendance_status;
                     $gross_time = '';
                     $sheet = $this->excel_format_row_bg($sheet, $row, 'FFE3E3E3');
@@ -450,43 +491,57 @@ class AttendenceController extends Controller {
                 $time_totals[$userId]['late_hours1'][$attendance->arrival_date][] = DateHelper::add_time($late_hours);
                 $time_totals[$userId]['late_hours2'][$attendance->arrival_date][] = [Carbon::parse($attendance->shift_start)->addHours(4)->format('h:i A'), Carbon::parse($attendance->arrival_time)->format('H:i:s')];
 
-                if(empty($attendance->arrival_time) && empty($attendance->leave_time)){
+                if (empty($attendance->arrival_time) && empty($attendance->leave_time)) {
                     $data = [
-//                        $employee_name,
-                        $attendance_date->format('m/d/Y'), $attendance_date->format('D'),
-                        '', '', '', '', $attendance_status, '', '', '', ''
-                    ];
-                }else{
-                    $data = [
-//                        $employee_name,
+                        //                        $employee_name,
                         $attendance_date->format('m/d/Y'),
                         $attendance_date->format('D'),
-                        $do_not_show_times ? '': $attendance->shift_start,
-                        $do_not_show_times ? '': Carbon::parse($attendance->arrival_time)->format('h:i A'),
-                        $do_not_show_times ? '': Carbon::parse($attendance->leave_time)->format('h:i A'),
-                        $do_not_show_times ? '': $late_hours,
-                        $attendance_status ,//. " ({$time_logs_count})"
+                        '',
+                        '',
+                        '',
+                        '',
+                        $attendance_status,
+                        '',
+                        '',
+                        '',
+                        ''
+                    ];
+                } else {
+                    $data = [
+                        //                        $employee_name,
+                        $attendance_date->format('m/d/Y'),
+                        $attendance_date->format('D'),
+                        $do_not_show_times ? '' : $attendance->shift_start,
+                        $do_not_show_times ? '' : Carbon::parse($attendance->arrival_time)->format('h:i A'),
+                        $do_not_show_times ? '' : Carbon::parse($attendance->leave_time)->format('h:i A'),
+                        $do_not_show_times ? '' : $late_hours,
+                        $attendance_status, //. " ({$time_logs_count})"
                         $earned_time,
                         $effective_time,
                         $gross_time,
                         '',
-//                        $department, $designation
+                        //                        $department, $designation
                     ];
                 }
 
                 $sheet = $this->excel_populate_row($sheet, $row, $data);
                 $row++;
-            }// end of users rows
+            } // end of users rows
             $data = [
                 'Total Times',
                 //'',
-                '', '', '', '',
+                '',
+                '',
+                '',
+                '',
                 DateHelper::convertSecondsToTimeFormat($time_totals[$this_user]['late_hours']),
                 '',
                 DateHelper::convertSecondsToTimeFormat($time_totals[$this_user]['earned_times']),
                 DateHelper::convertSecondsToTimeFormat($time_totals[$this_user]['effective_times']),
                 DateHelper::convertSecondsToTimeFormat($time_totals[$this_user]['gross_times']),
-                '', '', ''
+                '',
+                '',
+                ''
             ];
             $sheet = $this->excel_populate_row($sheet, $row, $data);
             $sheet = $this->excel_format_totals_row($sheet, $row++);
@@ -550,28 +605,28 @@ class AttendenceController extends Controller {
         foreach ($allAtendence as $attendence) {
             $newDate = $attendence->arrival_date;
             $original_attendence = $attendence;
-            $alternate_leave_time = $this->get_timeout( $attendence->policy->working_settings->timeout_policy, $attendence->arrival_time);
-            if( is_null($attendence->leave_date) ){
+            $alternate_leave_time = $this->get_timeout($attendence->policy->working_settings->timeout_policy, $attendence->arrival_time);
+            if (is_null($attendence->leave_date)) {
                 $empty_date = true;
-                $attendence->leave_time = $this->get_timeout( $attendence->policy->working_settings->timeout_policy, $attendence->arrival_time );
+                $attendence->leave_time = $this->get_timeout($attendence->policy->working_settings->timeout_policy, $attendence->arrival_time);
             }
 
             if (!isset($newAttendence[$attendence->user_id][$newDate])) {
                 $day_of_week = Carbon::parse($attendence->arrival_date)->format('D');
                 $is_it_weekend = AttendenceHelper::isItWeekEnd($day_of_week);
                 // weekend check
-                $policy_start_today = Carbon::parse($attendence->arrival_date. ' '.$attendence->policy->working_settings->shift_start)->addHours(4)->format('Y-m-d H:i:s');
-                $policy_end_today = Carbon::parse($attendence->arrival_date. ' '.$attendence->policy->working_settings->shift_close)->addHours(4)->format('Y-m-d H:i:s');
-                if($is_it_weekend && $attendence->arrival_time->format('Y-m-d H:i:s') == $policy_start_today){
-                        $arrival_time = '';
-                        $leave_time = '';
-                }else{
+                $policy_start_today = Carbon::parse($attendence->arrival_date . ' ' . $attendence->policy->working_settings->shift_start)->addHours(4)->format('Y-m-d H:i:s');
+                $policy_end_today = Carbon::parse($attendence->arrival_date . ' ' . $attendence->policy->working_settings->shift_close)->addHours(4)->format('Y-m-d H:i:s');
+                if ($is_it_weekend && $attendence->arrival_time->format('Y-m-d H:i:s') == $policy_start_today) {
+                    $arrival_time = '';
+                    $leave_time = '';
+                } else {
                     $arrival_time = $attendence->arrival_time;
                     $leave_time = $attendence->leave_time;
                 }
 
-                if($attendence->arrival_time > $attendence->leave_time && !is_null($attendence->leave_date)){
-                    $swaper = $attendence->arrival_time ;
+                if ($attendence->arrival_time > $attendence->leave_time && !is_null($attendence->leave_date)) {
+                    $swaper = $attendence->arrival_time;
                     $attendence->arrival_time = $attendence->leave_time;
                     $attendence->leave_time = $swaper;
                 }
@@ -595,33 +650,30 @@ class AttendenceController extends Controller {
                     'timeout_policy_id' =>    $attendence->policy->working_settings->timeout_policy,
                     'logs' => [$attendence->toArray()]
                 ];
-
             } else {
 
                 $old_row = $newAttendence[$attendence->user_id][$newDate];
 
-                if($attendence->arrival_time > $attendence->leave_time){
-                    $swaper = $attendence->arrival_time ;
+                if ($attendence->arrival_time > $attendence->leave_time) {
+                    $swaper = $attendence->arrival_time;
                     $attendence->arrival_time = $attendence->leave_time;
                     $attendence->leave_time = $swaper;
                 }
 
                 $newAttendence[$attendence->user_id][$newDate]['logs'][] = $attendence->toArray();
-                if($old_row['effective_hrs_in_minus']>=6 && empty($attendence->leave_date)){
+                if ($old_row['effective_hrs_in_minus'] >= 6 && empty($attendence->leave_date)) {
                     // un handled case
-                }else{
+                } else {
                     $newAttendence[$attendence->user_id][$newDate]['attendence_visual'] += DateHelper::progressBarWithTime($old_row['shift_start'], $old_row['shift_close'], $attendence->arrival_time, $attendence->leave_time ?? $alternate_leave_time);
                     $newAttendence[$attendence->user_id][$newDate]['effective_hrs_in_hours'] += DateHelper::globaldifferenceHours($attendence->arrival_time, $attendence->leave_time ?? $alternate_leave_time);
                     $newAttendence[$attendence->user_id][$newDate]['effective_hrs_in_minus'] += DateHelper::globaldifferenceMinus($attendence->arrival_time, $attendence->leave_time ?? $alternate_leave_time);
                 }
 
-                if($newAttendence[$attendence->user_id][$newDate]['effective_hrs_in_minus']>=60){
+                if ($newAttendence[$attendence->user_id][$newDate]['effective_hrs_in_minus'] >= 60) {
                     $newAttendence[$attendence->user_id][$newDate]['effective_hrs_in_minus'] -= 60;
-                    $newAttendence[$attendence->user_id][$newDate]['effective_hrs_in_hours'] +=1;
+                    $newAttendence[$attendence->user_id][$newDate]['effective_hrs_in_hours'] += 1;
                 }
-
             }
-
         }
 
 
@@ -629,9 +681,10 @@ class AttendenceController extends Controller {
         return $newAttendence;
     }
 
-    public function get_excel_headings($sheet, $row){
+    public function get_excel_headings($sheet, $row)
+    {
         $data = [
-//            'Employee Name',
+            //            'Employee Name',
             'Date',
             'Day',
             'Shift Time',
@@ -643,18 +696,19 @@ class AttendenceController extends Controller {
             'Effective Hours',
             'Gross Hours',
             'Comments',
-//            'Department',
-//            'Designation'
+            //            'Department',
+            //            'Designation'
         ];
         $sheet = $this->excel_populate_row($sheet, $row, $data);
         $sheet = $this->excel_format_headings($sheet, $row);
         return $sheet;
     }
-    public function get_excel_header($sheet, $row, $report_name){
+    public function get_excel_header($sheet, $row, $report_name)
+    {
         $drawing = new Drawing();
         $drawing->setName('Logo');
         $drawing->setDescription('NovitaMS Logo');
-        $imagePath = realpath( 'assets/img/novitams-logo.png');
+        $imagePath = realpath('assets/img/novitams-logo.png');
 
         if (!file_exists($imagePath)) {
             throw new \Exception("File {$imagePath} not found!");
@@ -666,7 +720,8 @@ class AttendenceController extends Controller {
         $sheet->setCellValue('D' . $row, $report_name);
         return $sheet;
     }
-    public function excel_apply_format($sheet, $row, $col1 = "A", $col2 = "K", $format){
+    public function excel_apply_format($sheet, $row, $col1 = "A", $col2 = "K", $format)
+    {
         foreach (range($col1, $col2) as $column) {
             $cell = $column . $row;
             $sheet->getStyle($cell)->applyFromArray($format);
@@ -674,13 +729,15 @@ class AttendenceController extends Controller {
         return $sheet;
     }
 
-    public function add_single_column_row($sheet, $row, $data = ''){
+    public function add_single_column_row($sheet, $row, $data = '')
+    {
         $sheet->mergeCells("A{$row}:K{$row}");
         $sheet = $this->excel_populate_row($sheet, $row, [$data]);
         $sheet = $this->excel_format_headings($sheet, $row);
         return $sheet;
     }
-    public function excel_populate_row($sheet, $row, $data = []){
+    public function excel_populate_row($sheet, $row, $data = [])
+    {
         if (is_array($data) && !empty($data)) {
             foreach ($data as $index => $value) {
                 $column = chr(65 + $index); // chr(65) is 'A', chr(66) is 'B', etc.
@@ -698,7 +755,8 @@ class AttendenceController extends Controller {
 
         return $sheet;
     }
-    public function excel_set_column_widths($sheet, $row, $data){
+    public function excel_set_column_widths($sheet, $row, $data)
+    {
         if (is_array($data) && !empty($data)) {
             foreach ($data as $index => $value) {
                 $column = chr(65 + $index); // chr(65) is 'A', chr(66) is 'B', etc.
@@ -707,7 +765,8 @@ class AttendenceController extends Controller {
         }
         return $sheet;
     }
-    public function excel_format_totals_row($sheet, $row, $bg_color = 'FF008AFC'){
+    public function excel_format_totals_row($sheet, $row, $bg_color = 'FF008AFC')
+    {
         $totals_cell_format = [
             'font' => [
                 'bold' => true,
@@ -719,7 +778,8 @@ class AttendenceController extends Controller {
         $sheet = $this->excel_apply_format($sheet, $row, "A", "N", $totals_cell_format);
         return $sheet;
     }
-    public function excel_format_row_bg($sheet, $row, $bg_color = Color::COLOR_DARKBLUE){
+    public function excel_format_row_bg($sheet, $row, $bg_color = Color::COLOR_DARKBLUE)
+    {
         $row_bg_format['fill'] = [
             'fillType' => Fill::FILL_SOLID,
             'startColor' => ['argb' => $bg_color],
@@ -727,9 +787,10 @@ class AttendenceController extends Controller {
         $sheet = $this->excel_apply_format($sheet, $row, "A", "K", $row_bg_format);
         return $sheet;
     }
-    public function excel_format_headings($sheet, $row){
+    public function excel_format_headings($sheet, $row)
+    {
         //$data = [ 25 ,13 ,7 ,12 ,12 ,12 ,14 ,12 ,17 ,17 ,17 ,35 ,29 ,31 ];
-        $data = [ 13 ,7 ,12 ,12 ,12 ,14 ,12 ,17 ,17 ,17 ,60 ];
+        $data = [13, 7, 12, 12, 12, 14, 12, 17, 17, 17, 60];
         $sheet = $this->excel_set_column_widths($sheet, $row, $data);
         $header_cell_format = [
             'font' => [
@@ -772,38 +833,40 @@ class AttendenceController extends Controller {
         return $sheet;
     }
 
-    public function get_report_period($args){
+    public function get_report_period($args)
+    {
         $report_period = '';
-        if( !empty($args['from_date']) && empty($args['to_date']) ) {
-            $report_period .= 'From '.$args['from_date'];
-        }else if( empty($args['from_date']) && !empty($args['to_date']) ){
-            $report_period .= 'To '.$args['to_date'];
-        }else if( !empty($args['from_date']) && !empty($args['to_date']) ){
-            $report_period .= $args['from_date'].' - '.$args['to_date'];
-        }else if( $args['from_date'] == $args['to_date'] ){
+        if (!empty($args['from_date']) && empty($args['to_date'])) {
+            $report_period .= 'From ' . $args['from_date'];
+        } else if (empty($args['from_date']) && !empty($args['to_date'])) {
+            $report_period .= 'To ' . $args['to_date'];
+        } else if (!empty($args['from_date']) && !empty($args['to_date'])) {
+            $report_period .= $args['from_date'] . ' - ' . $args['to_date'];
+        } else if ($args['from_date'] == $args['to_date']) {
             $report_period .= $args['from_date'];
         }
         return $report_period;
     }
 
-    private function get_timeout( $policy_id, $start_time) {
+    private function get_timeout($policy_id, $start_time)
+    {
         return $start_time;
 
         $policies_working_settings = \App\Helpers\PolicyHelper::get_timeout_policy();
 
         $start_time1 = $start_time;
 
-        if($policy_id==3){
+        if ($policy_id == 3) {
             $multiplier = 4.5;
-        }elseif ($policy_id==2){
+        } elseif ($policy_id == 2) {
             $multiplier = 0;
-        }elseif ($policy_id==1){
+        } elseif ($policy_id == 1) {
             $multiplier = 9;
-        }else{
+        } else {
             $multiplier = 1;
         }
 
-        $utcTimestamp = Carbon::parse($start_time)->addMinutes($multiplier*60);
+        $utcTimestamp = Carbon::parse($start_time)->addMinutes($multiplier * 60);
 
         return $utcTimestamp;
     }

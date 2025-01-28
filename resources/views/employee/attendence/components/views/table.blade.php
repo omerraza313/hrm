@@ -27,6 +27,7 @@ use App\Helpers\DateHelper;
                         <th>Attendence visual</th>
                         <th>Shift Start</th>
                         <th>Leniency</th>
+                        <!-- <th>Late Hours</th> -->
                         <th>Arrival</th>
                         <th>Earned Hrs</th>
                         <th>Effective Hrs</th>
@@ -45,7 +46,7 @@ use App\Helpers\DateHelper;
                     @endphp
                     <tr>
                         <td>{{++$key}}</td>
-                        <td>{{Carbon\Carbon::parse($data->date)->format('m-d-y')}}</td>
+                        <td>{{Carbon\Carbon::parse($data->date)->format('m/d/y')}}</td>
                         <td>
                             <div class="progress progress-xs">
                                 <div class="progress-bar progress-bar-striped bg-primary" role="progressbar"
@@ -57,9 +58,10 @@ use App\Helpers\DateHelper;
                         </td>
                         <td>{{$data->shift_start}}</td>
                         <td>{{$data->leniency}}</td>
+                        <!-- <td>{{""}}</td> -->
                         <td>
                             @if($data->checkin_time)
-                            {{ \Carbon\Carbon::parse($data->checkin_time)->format('h:i A') }}
+                            {{ \Carbon\Carbon::parse($data->checkin_time)->format('h:i:s A') }}
                             @else
                             --:--:--
                             @endif
@@ -120,11 +122,14 @@ use App\Helpers\DateHelper;
             },
             success: function(response) {
                 $('#view_log_modal').modal('show'); // Show the modal
-
+                let totalFormattedTime = calculateEarnedTime(response);
+                let effective_time = calculateEffectiveTime(response, arrivalDate);
+                let formattedDate = formatDate(arrivalDate);
                 let mainString = `
                         <table class="table">
                             <thead>
                                 <tr>
+                                    <th>Date</th>
                                     <th>Check In</th>
                                     <th>Check Out</th>
                                     <th>Earned Time</th>
@@ -139,6 +144,7 @@ use App\Helpers\DateHelper;
                 response.forEach(log => {
                     mainString += `
                             <tr>
+                                <td>${formattedDate}</td>
                                 <td>${log.checkin}</td>
                                 <td>${log.checkout}</td>
                                 <td>${log.time_spent}</td>
@@ -149,6 +155,18 @@ use App\Helpers\DateHelper;
                 });
 
                 mainString += `
+                  <tr>
+                    <td colspan="3"><strong>Earned Time</strong></td>
+                    <td colspan="3">${totalFormattedTime}</td>
+                </tr>
+                <tr>
+                    <td colspan="3"><strong>Effective Time</strong></td>
+                    <td colspan="3">${effective_time}</td>
+                </tr>
+                <tr>
+                     <td colspan="3"><strong>Gross Hours</strong></td>
+                    <td colspan="3">08:00:00</td>
+                </tr>
                             </tbody>
                         </table>
                     `;
@@ -161,94 +179,71 @@ use App\Helpers\DateHelper;
             }
         });
     }
+    function formatDate(dateString) {
+    let date = new Date(dateString); // Convert to Date object
+    let month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based, so add 1 and pad with zero
+    let day = String(date.getDate()).padStart(2, '0'); // Pad the day with leading zero if necessary
+    let year = date.getFullYear(); // Get the full year
 
-    function openLogModal(attendence) {
-        $('#view_log_modal').modal('show');
+    return `${month}/${day}/${year}`; // Return formatted date as mm/dd/yyyy
+}
+ 
+function calculateEffectiveTime(logs, arrivalDate) {
+    if (!logs.length) return "00:00:00"; // No logs, return zero time.
+    // Extract check-in and check-out times without sorting
+    console.log(logs);
+    let checkInTimes = logs.map(log => convertToSeconds(log.checkin)).filter(time => time !== null);
+    let checkOutTimes = logs.map(log => convertToSeconds(log.checkout)).filter(time => time !== null);
 
-        let mainString = `
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Check In</th>
-                        <th>Check Out</th>
-                        <th>Earned Time</th>
-                        <th>Floor</th>
-                        <th>Remarks</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
+    if (!checkInTimes.length || !checkOutTimes.length) return "00:00:00"; // If missing times, return zero time.
 
-        let subString = ``;
-        attendence = JSON.parse(attendence);
-        console.log(attendence);
-        let totalFormattedTime = calculateTotalTimeDifference(attendence['logs']);
-        let effective_time = calculateEffectiveTime(attendence['logs']);
+    let firstCheckIn = checkInTimes[0];  // First check-in from logs order
+    let lastCheckOut = checkOutTimes[checkOutTimes.length - 1]; // Last check-out from logs order
 
-        for (let index = 0; index < attendence['logs'].length; index++) {
-            const element = attendence['logs'][index];
-            let checkin = formatLogDate(element['arrival_time']);
-            let checkout = formatLogDate(element['leave_time']);
+    if (lastCheckOut < firstCheckIn) return "00:00:00"; 
 
-            let remarks = element['remarks'] ?? '';
-            let device_id = element['device_id'] ?? '';
-            let time_diff = calculateTimeDifference(checkin, checkout);
+    let differenceInSeconds = lastCheckOut - firstCheckIn;
+    
+    return convertSecondsToTime(differenceInSeconds);
+}
 
-            subString += `
-                <tr>
-                    <td>${checkin}</td>
-                    <td>${checkout}</td>
-                    <td>${time_diff}</td>
-                    <td>${device_id}</td>
-                    <td>${remarks}</td>
-                </tr>
-                `;
-        }
-        mainString += `${subString}
-            <tr>
-                <td colspan="2"><strong>Earned Time</strong></td>
 
-                <td colspan="3">${totalFormattedTime}</td>
-            </tr>
-            <tr>
-                <td colspan="2"><strong>Effective Time</strong></td>
-                <td colspan="3">${effective_time}</td>
-            </tr>
-            </tbody></table>`;
+function calculateEarnedTime(logs) {
+    let totalEarnedTimeInSeconds = 0;
 
-        $('#view_modal_data').html(mainString);
-    }
+    logs.forEach(log => {
+        if (log.checkin && log.checkout) {
+            let checkInTimeInSeconds = convertToSeconds(log.checkin);
+            let checkOutTimeInSeconds = convertToSeconds(log.checkout);
 
-    function calculateEffectiveTime(logs) {
-        if (logs.length === 0) {
-            return "00:00:00"; // Return if there are no logs
-        }
-
-        let earliestArrival = new Date(logs[0]['arrival_time']);
-        let latestLeave = new Date(logs[0]['leave_time']);
-
-        for (let index = 1; index < logs.length; index++) {
-            const element = logs[index];
-
-            let checkin = new Date(element['arrival_time']);
-            let checkout = new Date(element['leave_time']);
-
-            // Update the earliest arrival time
-            if (checkin < earliestArrival) {
-                earliestArrival = checkin;
-            }
-
-            // Update the latest leave time
-            if (checkout > latestLeave) {
-                latestLeave = checkout;
+            // Ensure checkout time is after checkin time
+            if (checkOutTimeInSeconds > checkInTimeInSeconds) {
+                totalEarnedTimeInSeconds += (checkOutTimeInSeconds - checkInTimeInSeconds);
             }
         }
+    });
 
-        // Calculate the total difference in milliseconds
-        const totalTimeDifference = Math.abs(latestLeave - earliestArrival);
+    return convertSecondsToTime(totalEarnedTimeInSeconds);
+}
+function convertToSeconds(timeStr) {
+    if (!timeStr) return null;
 
-        return formatMilliseconds(totalTimeDifference);
-    }
+    let parts = timeStr.split(':'); 
+
+    let hours = parseInt(parts[0], 10); // Explicit base-10 conversion
+    let minutes = parseInt(parts[1], 10); 
+    let seconds = parts.length === 3 ? parseInt(parts[2], 10) : 0; // Ensure seconds are accounted for
+
+    return hours * 3600 + minutes * 60 + seconds;
+}
+function convertSecondsToTime(totalSeconds) {
+    let hours = Math.floor(totalSeconds / 3600);
+    let minutes = Math.floor((totalSeconds % 3600) / 60);
+    let seconds = totalSeconds % 60;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 
     function formatMilliseconds(ms) {
         let totalSeconds = Math.floor(ms / 1000);

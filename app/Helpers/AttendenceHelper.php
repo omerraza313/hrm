@@ -624,7 +624,7 @@ class AttendenceHelper {
             foreach ($date_range as $current_date) {
                 if (!empty($attendance) && empty($attendance[$current_date])) {
                     $new_attendance = collect($attendance)->first();
-                    $new_attendance['arrival_time'] = Carbon::createFromFormat('H:i A', $new_attendance['shift_start'])->addHours(4)->format('H:i:s');
+                    $new_attendance['arrival_time'] = Carbon::createFromFormat('H:i:s A', $new_attendance['shift_start'])->addHours(4)->format('H:i:s');
                     $new_attendance['leave_time'] = $new_attendance['arrival_time'];
                     $new_attendance['a_date'] = DateHelper::globaldateFormat('j M Y', $current_date);
                     $new_attendance['leave_date'] = $current_date;

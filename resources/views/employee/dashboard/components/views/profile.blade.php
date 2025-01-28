@@ -1,3 +1,7 @@
+<?php
+
+use Carbon\Carbon;
+?>
 <div class="profile-view">
     <div class="profile-img-wrap">
         <div class="profile-img">
@@ -10,14 +14,18 @@
             <div class="col-md-5 profile-info-left">
 
                 <h3 class="user-name m-t-0 mb-0">
-                    {{ $employee->first_name . ' ' . $employee->last_name }}</h3>
+                    {{ $employee->first_name . ' ' . $employee->last_name }}
+                </h3>
                 <h6 class="text-muted" style="margin-bottom: 2px;">{{ $employee->employee_details->department->name }}
                 </h6>
                 <div class="small doj text-muted">Pseudo Name : {{ $employee->employee_details->pseudo_name }}</div>
                 <small class="text-muted">{{ $employee->employee_details->designation->name }}</small>
                 <div class="staff-id">Employee ID : {{ $employee->id }}</div>
                 <div class="small doj text-muted">Date of Join :
-                {{ \App\Helpers\DateHelper::dateFormat('m/d/Y',$employee->employee_details->join_date) }}</div>
+                    <!-- {{ \App\Helpers\DateHelper::dateFormat('m/d/Y',$employee->employee_details->join_date) }} -->
+                    <!-- {{ \App\Helpers\DateHelper::dateFormat('m/d/Y',$employee->employee_details->join_date) }} -->
+                    {{ $employee->employee_details->join_date}}
+                </div>
                 <div class="staff-msg"></div>
 
             </div>
@@ -34,22 +42,23 @@
                     <li>
                         <div class="title">Birthday :</div>
                         <div class="text">
-                            {{ \App\Helpers\DateHelper::dateFormat('m/d/Y',$employee->employee_details->dob) }}
+                            <!-- {{ \App\Helpers\DateHelper::dateFormat('m/d/Y',$employee->employee_details->dob) }} -->
+                            {{ Carbon::createFromFormat('d/m/Y', $employee->employee_details->dob)->format('m/d/Y');}}
                         </div>
                         {{-- <div class="text">
                             {{ \App\Helpers\DateHelper::globaldateFormat('j M Y', $employee->employee_details->dob) }}
-                        </div> --}}
-                    </li>
-                    <li>
-                        <div class="title">Address :</div>
-                        <div class="text">{{ $employee->address[0]->address }}</div>
-                    </li>
-                    <li>
-                        <div class="title">Gender :</div>
-                        <div class="text">{{ $employee->employee_details->gender }}</div>
-                    </li>
-                </ul>
-            </div>
+            </div> --}}
+            </li>
+            <li>
+                <div class="title">Address :</div>
+                <div class="text">{{ $employee->address[0]->address }}</div>
+            </li>
+            <li>
+                <div class="title">Gender :</div>
+                <div class="text">{{ $employee->employee_details->gender }}</div>
+            </li>
+            </ul>
         </div>
     </div>
+</div>
 </div>

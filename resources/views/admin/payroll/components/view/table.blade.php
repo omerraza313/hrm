@@ -32,7 +32,7 @@
                                 </td>
                                 <td>{{ $employee->id }}</td>
                                 <td>{{ $employee->email }}</td>
-                                <td>{{ \App\Helpers\DateHelper::dateFormat('j M Y', $employee->employee_details->join_date) }}
+                                <td>{{ \App\Helpers\DateHelper::dateFormat('M j Y', $employee->employee_details->join_date) }}
                                 </td>
                                 <td>
                                     {{ $employee->employee_details->department->name }}

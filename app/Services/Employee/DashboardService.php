@@ -80,8 +80,8 @@ class DashboardService {
             }
             // dd($totalWorkingHours);
         }
-        $dob = Carbon::createFromFormat('d/m/Y', $employee->employee_details->dob)->format('m/d/Y'); // Parse the date using Carbon
-        $doj = Carbon::createFromFormat('d/m/Y', $employee->employee_details->join_date)->format('m/d/Y'); // Parse the date using Carbon
+        $dob = Carbon::createFromFormat('d/m/Y', $employee->employee_details->dob)->format('m/d/Y');
+        $doj = Carbon::parse($employee->employee_details->join_date)->format('m/d/Y'); 
 
         //dd($employee);
 

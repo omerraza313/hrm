@@ -69,7 +69,7 @@ class UserDetail extends Model {
     public function setJoinDateAttribute($value)
     {
         if (!strpos($value, "-")) {
-            $utcTime = Carbon::createFromFormat('d/m/Y', $value, 'America/New_York');
+            $utcTime = Carbon::createFromFormat('m/d/Y', $value, 'America/New_York');
             $formattedUtcTime = $utcTime->format('Y-m-d');
         } else {
             $formattedUtcTime = $value;
@@ -89,7 +89,7 @@ class UserDetail extends Model {
     public function getJoinDateAttribute($value)
     {
         // return Carbon::parse($value, 'utc')->setTimezone('America/New_York')->format('d/m/Y');
-        return Carbon::parse($value, 'utc')->format('d/m/Y');
+        return Carbon::parse($value, 'utc')->format('m/d/Y');
     }
     public function getDobAttribute($value)
     {

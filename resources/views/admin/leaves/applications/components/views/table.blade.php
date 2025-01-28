@@ -39,8 +39,9 @@
                                     </h2>
                                 </td>
                                 <td>{{ $apply_leave->subject }}</td>
-                                <td>{{ \App\Helpers\DateHelper::dateformat('m/d/Y', $apply_leave->leave_from) }}</td>
-                                <td>{{ \App\Helpers\DateHelper::dateformat('m/d/Y', $apply_leave->leave_upto) }}</td>
+                                <td>{{ \Carbon\Carbon::createFromFormat('d/m/Y', $apply_leave->leave_from)->format('m/d/Y') }}
+                                </td>
+                                <td>{{ \Carbon\Carbon::createFromFormat('d/m/Y', $apply_leave->leave_from)->format('m/d/Y') }}</td>
                                 {{-- <td>{{ \App\Helpers\DateHelper::calculateNumberOfDays($apply_leave->leave_from, $apply_leave->leave_upto) }}
                                     days</td> --}}
                                 <td>
